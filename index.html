@@ -547,8 +547,7 @@ function viewAcct(ents){
   <h2 class="sec"><span>설정</span></h2>
   <div class="card-sec"><div class="field"><label for="budget">한 달 예산</label><input class="inp num" id="budget" inputmode="numeric" value="${s.budget?won(s.budget):""}" placeholder="예: 1,500,000"></div>
   <p class="muted" style="font-size:13px">이 장부는 <b>이 휴대폰의 브라우저 안에만</b> 저장되고, 어디로도 전송되지 않아요. 모아장부를 만든 사람도 볼 수 없어요.</p>
-  <p class="muted" style="font-size:13px">가맹점의 카테고리나 지출 성격을 한 번 정하면 다음부터 같은 가맹점에 자동으로 적용돼요. 학습한 가맹점 ${new Set([...Object.keys(S.merchants),...Object.keys(S.flowLearn)]).size}곳.</p>
-  <p class="muted" style="font-size:13px">통계 탭의 <b>PAMO 월간 요약 내보내기</b>는 PAMO-Household의 monthly_summary JSON과 같은 형식이라, 기존 Notion 동기화가 그대로 읽을 수 있어요. 결혼 지출 칸(wedding_expense)은 0으로 내보내요.</p></div>
+  <p class="muted" style="font-size:13px">가맹점의 카테고리나 지출 성격을 한 번 정하면 다음부터 같은 가맹점에 자동으로 적용돼요. 학습한 가맹점 ${new Set([...Object.keys(S.merchants),...Object.keys(S.flowLearn)]).size}곳.</p></div>
   <h2 class="sec"><span>백업</span><span class="muted" style="font-weight:400">${lastBackup()?"마지막 백업 "+fmtDate(lastBackup()):"백업한 적 없음"}</span></h2>
   <div class="card-sec"><p class="muted" style="font-size:13px">휴대폰을 바꾸거나 브라우저 데이터를 지우면 장부가 사라져요. 2주에 한 번쯤 백업 파일을 저장해 두세요. 새 휴대폰에서는 백업 파일을 불러오면 그대로 이어서 쓸 수 있어요.</p>
   <div class="actions"><button class="btn" data-backup="1">백업 파일 저장</button><label class="btn ghost" for="restore" style="text-align:center;cursor:pointer">백업 파일 불러오기<input type="file" id="restore" accept="application/json,.json" hidden></label></div></div>`;
