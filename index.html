@@ -384,7 +384,7 @@ function settings(){return S.settings||DEFAULT_SETTINGS}
 function clean(o){const r={};for(const k in o)if(o[k]!==undefined)r[k]=o[k];return r}
 function putTx(t,quiet){t=clean(t);S.tx.set(t.id,t);if(!quiet)render();if(db)return serial("tx/"+t.id,()=>txCol().doc(t.id).set(t));localSave()}
 function delTx(id){S.tx.delete(id);render();if(db)return serial("tx/"+id,()=>txCol().doc(id).delete());localSave()}
-function putSettings(s){S.settings=s;render();if(db)return serial("settings",()=>meta("settings").set(s));localSave()}
+function putSettings(s,quiet){S.settings=s;if(!quiet)render();if(db)return serial("settings",()=>meta("settings").set(s));localSave()}
 function learnMerchant(name,cat){const k=normKey(name);if(!k||S.merchants[k]===cat)return;S.merchants={...S.merchants,[k]:cat};const snap=S.merchants;if(db)return serial("merchants",()=>meta("merchants").set({map:snap}));localSave()}
 function learnFlow(name,flow){const k=normKey(name);if(!k||!flow||S.flowLearn[k]===flow)return;S.flowLearn={...S.flowLearn,[k]:flow};const snap=S.flowLearn;if(db)return serial("flows",()=>meta("flows").set({map:snap}));localSave()}
 
@@ -541,8 +541,9 @@ const ICONS={
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="1.3";
+const APP_VERSION="1.4";
 const CHANGELOG=[
+ {v:"1.4",d:"2026-10-23",items:["자산 탭의 한 달 예산을 고친 뒤 바로 탭을 바꾸거나 앱을 닫으면 저장되지 않던 문제를 고쳤어요. 이제 입력을 멈추면 바로 저장돼요."]},
  {v:"1.3",d:"2026-10-23",items:["빠른 입력 미리보기에서 줄마다 지출·수입·이체·환불을 고를 수 있어요. 이체는 받는 곳(보낸 곳) 계좌를 골라요.","은행 입출금용 카테고리(보험, 세금, 저축·투자, 대출 상환, 송금, 보험금, 중고 판매)를 추가했어요.","'급여입금'처럼 붙여 쓴 입금 문자와 연도가 있는 날짜도 읽어요.","카드대금은 이체로 골라 통장 → 카드로 기록하면 지출에 두 번 잡히지 않아요."]},
  {v:"1.2",d:"2026-10-22",items:["신한 외에 KB국민·현대·삼성·롯데·하나·우리·NH농협·BC 등 주요 카드사와 은행 결제 문자를 붙여넣으면 바로 읽어요.","은행 입금 문자도 수입으로 읽어요."]},
  {v:"1.1",d:"2026-10-22",items:["아래 탭에 '가이드'를 추가했어요. 설치 방법, 기록 요령, 업데이트 소식을 여기서 볼 수 있어요."]},
@@ -919,6 +920,11 @@ function applyRestore(){
   pendingRestore=null;localSave();closeSheet();render();toast(`거래 ${S.tx.size}건을 불러왔어요.`);
 }
 
+/* 예산: 입력을 멈추거나 칸을 떠나거나 탭을 바꾸거나 앱을 닫으면 저장 */
+let budgetTimer;
+function saveBudget(){clearTimeout(budgetTimer);const el=document.getElementById("budget");if(!el)return;const v=parseInt(el.value.replace(/[^\d]/g,""),10)||0;if(v===(settings().budget||0))return;const s=JSON.parse(JSON.stringify(settings()));s.budget=v;putSettings(s,true);toast(v?`한 달 예산을 ${won(v)}원으로 저장했어요.`:"예산을 지웠어요.")}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveBudget()});
+
 /* ================= toast ================= */
 let toastTimer;
 function toast(msg,action,fn){clearTimeout(toastTimer);document.querySelectorAll(".toast").forEach(x=>x.remove());const el=document.createElement("div");el.className="toast";el.setAttribute("role","status");el.innerHTML=`<span>${esc(msg)}</span>${action?`<button>${esc(action)}</button>`:""}`;document.body.appendChild(el);if(action)el.querySelector("button").onclick=()=>{el.remove();fn()};toastTimer=setTimeout(()=>el.remove(),action?7000:2800)}
@@ -928,7 +934,7 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button,#scrim");if(!t)return;
   if(t.id==="scrim"){if(e.target===t){closeSheet();draft=null}return}
   const ds=t.dataset;
-  if(ds.tab){S.tab=ds.tab;render();window.scrollTo(0,0)}
+  if(ds.tab){saveBudget();S.tab=ds.tab;render();window.scrollTo(0,0)}
   else if(ds.mon){const d=parseYmd(S.month+"-01");d.setMonth(d.getMonth()+ +ds.mon);S.month=ymd(d).slice(0,7);S.sel=S.month===ym(todayStr())?todayStr():S.month+"-01";render()}
   else if(ds.day){S.sel=ds.day;render()}
   else if(ds.cf!==undefined){S.catFilter=ds.cf;render()}
@@ -959,7 +965,7 @@ document.addEventListener("input",e=>{
   else if(t.id==="qt"){quickText=t.value;refreshQuick()}
   else if(t.id==="f-amt"){const raw=t.value.replace(/[^\d]/g,"");draft.amt=parseInt(raw,10)||0;t.value=raw?won(draft.amt):"";if(draft.instN>1){readOne();renderAdd();const n=$("#f-amt");n.focus();n.setSelectionRange(n.value.length,n.value.length)}}
   else if(t.id==="f-mer"){draft.merchant=t.value;if(!draft.catTouched){const c=guessCat(t.value,draft.type==="in"?"in":"out");draft.cat=c;const sel=$("#f-cat");if(sel)sel.innerHTML=catOptions(draft.type==="in"?"in":"out",c)}if(!draft.flowTouched){const f=guessFlow(t.value);if(f){draft.flow=f;const sel=$("#f-flow");if(sel)sel.value=f}}}
-  else if(t.id==="a-init"||t.id==="budget"){const raw=t.value.replace(/[^\d]/g,"");t.value=raw?won(+raw):""}
+  else if(t.id==="a-init"||t.id==="budget"){const raw=t.value.replace(/[^\d]/g,"");t.value=raw?won(+raw):"";if(t.id==="budget"){clearTimeout(budgetTimer);budgetTimer=setTimeout(saveBudget,700)}}
 });
 document.addEventListener("change",e=>{
   const t=e.target;
@@ -972,11 +978,11 @@ document.addEventListener("change",e=>{
   else if(t.dataset.qto!==undefined){const r=quickRows[+t.dataset.qto];if(r){quickOv[r.key]={...(quickOv[r.key]||{}),to:t.value};refreshQuick()}}
   else if(t.dataset.qinc!==undefined){const r=quickRows[+t.dataset.qinc];if(r){quickOv[r.key]={...(quickOv[r.key]||{}),include:t.checked};refreshQuick()}}
   else if(t.id==="qa")quickAcct=t.value;
-  else if(t.id==="budget"){const s=JSON.parse(JSON.stringify(settings()));s.budget=parseInt(t.value.replace(/[^\d]/g,""),10)||0;putSettings(s);toast("예산을 저장했어요.")}
+  else if(t.id==="budget")saveBudget();
   else if(t.id==="shot")readShot(t.files&&t.files[0]);
   else if(t.id==="restore"){readRestore(t.files&&t.files[0]);t.value=""}
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#scrim")){closeSheet();draft=null}});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&e.target.id==="budget"){e.target.blur();return}if(e.key==="Escape"&&$("#scrim")){closeSheet();draft=null}});
 
 boot();
 })();
