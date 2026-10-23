@@ -199,8 +199,8 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.7;font-family:var(--
 (function(){
 "use strict";
 /* ================= constants ================= */
-const CATS_OUT=["식비","카페","마트·편의점","쇼핑","교통","주거·공과금","통신","의료","문화·여가","구독","경조사","교육","기타"];
-const CATS_IN=["급여","용돈","부수입","이자·환급","기타수입"];
+const CATS_OUT=["식비","카페","마트·편의점","쇼핑","교통","주거·공과금","통신","의료","문화·여가","구독","경조사","교육","보험","세금","저축·투자","대출 상환","송금","기타"];
+const CATS_IN=["급여","용돈","부수입","이자·환급","보험금","중고 판매","기타수입"];
 /* 지출 성격: PAMO cashflow_type 저장값 그대로 */
 const FLOWS=[["정상 생활비","생활비","정상 생활비"],["고정비","고정비","고정비"],["기타 비정기지출","비정기","비정기 (일회성 큰 지출)"]];
 /* 예전 '결혼 관련 일회성 지출' 값은 비정기로 읽는다 */
@@ -220,9 +220,14 @@ const RULES=[
  ["구독",/넷플릭스|netflix|유튜브|youtube|디즈니|티빙|웨이브|왓챠|쿠팡와우|멜론|스포티파이|spotify|애플|apple|icloud|chatgpt|claude|구독/i],
  ["문화·여가",/cgv|메가박스|롯데시네마|영화|공연|티켓|인터파크|야놀자|여기어때|에어비앤비|호텔|숙박|노래방|pc방|볼링|헬스|필라테스/i],
  ["경조사",/축의금|조의금|부조|선물|경조/i],
+ ["저축·투자",/적금|청약|증권|투자|펀드|주식|ISA|연금저축/i],
+ ["대출 상환",/대출|원리금|상환|할부금/i],
+ ["세금",/세금|국세|지방세|과태료|범칙금|국민연금|건강보험공단/i],
+ ["보험",/보험|생명|화재|손해|라이프/i],
+ ["송금",/송금/i],
  ["교육",/학원|강의|클래스101|인프런|교재|서점|교보문고|yes24|알라딘/i]
 ];
-const RULES_IN=[["급여",/급여|월급|상여|보너스|salary/i],["용돈",/용돈/i],["이자·환급",/이자|환급|캐시백|리워드/i],["부수입",/부수입|중고|당근|판매/i]];
+const RULES_IN=[["급여",/급여|월급|상여|보너스|salary/i],["보험금",/보험금/i],["중고 판매",/당근|중고/i],["용돈",/용돈/i],["이자·환급",/이자|환급|캐시백|리워드/i],["부수입",/부수입|중고|당근|판매/i]];
 const CUR={"달러":"USD","유로":"EUR","엔":"JPY","위안":"CNY","파운드":"GBP"};
 const DEFAULT_SETTINGS={budget:1500000,accounts:[
  {id:"a1",name:"주거래 통장",kind:"bank",init:0},
@@ -303,7 +308,7 @@ function parseShinhanBank(text,today){
 }
 /* ===== 범용 카드·은행 문자 해석 (신한 전용 파서가 못 읽은 문자) ===== */
 const FIN_CARDS=[[/KB\s*국민\s*카드|국민\s*카드|KB\s*카드|^KB\s*[\d*]/,"KB국민카드"],[/현대\s*카드/,"현대카드"],[/삼성\s*카드|^삼성\s*[\d*(]/,"삼성카드"],[/롯데\s*카드|^롯데\s*[\d*(]/,"롯데카드"],[/하나\s*카드|^하나\s*\(/,"하나카드"],[/우리\s*카드|^우리\s*\(/,"우리카드"],[/NH\s*농협\s*카드|농협\s*카드|NH\s*카드|^NH\s*[\d*(]/,"NH농협카드"],[/BC\s*카드|비씨\s*카드|^BC\s*[\d*(]/,"BC카드"],[/씨티\s*카드/,"씨티카드"],[/IBK\s*카드|기업\s*카드/,"IBK기업카드"],[/카카오\s*뱅크\s*(?:체크)?\s*카드|카카오\s*체크/,"카카오뱅크카드"],[/토스\s*(?:뱅크)?\s*카드/,"토스뱅크카드"],[/케이\s*뱅크\s*카드/,"케이뱅크카드"],[/신한\s*카드|^신한\s*\(/,"신한카드"]];
-const FIN_BANKS=[[/카카오\s*뱅크/,"카카오뱅크"],[/토스\s*뱅크/,"토스뱅크"],[/케이\s*뱅크/,"케이뱅크"],[/KB\s*국민\s*은행|국민\s*은행|^\[?KB\]/,"KB국민은행"],[/NH\s*농협|농협|^NH/,"NH농협"],[/하나\s*은행|^\[?하나\]?[,\s]/,"하나은행"],[/우리\s*은행|^\[?우리\]?[\s,]/,"우리은행"],[/신한\s*은행/,"신한은행"],[/IBK|기업\s*은행/,"IBK기업은행"],[/우체국/,"우체국"],[/새마을/,"새마을금고"],[/SC\s*제일|제일\s*은행/,"SC제일은행"],[/iM\s*뱅크|대구\s*은행/,"iM뱅크"],[/부산\s*은행/,"부산은행"],[/경남\s*은행/,"경남은행"],[/광주\s*은행/,"광주은행"],[/전북\s*은행/,"전북은행"],[/수협/,"수협"],[/신협/,"신협"]];
+const FIN_BANKS=[[/카카오\s*뱅크/,"카카오뱅크"],[/토스\s*뱅크/,"토스뱅크"],[/케이\s*뱅크/,"케이뱅크"],[/KB\s*국민\s*은행|국민\s*은행|^\[?KB\]/,"KB국민은행"],[/NH\s*농협|농협|^NH/,"NH농협"],[/하나\s*은행|^\[?하나\]?[,\s]/,"하나은행"],[/우리\s*은행|^\[?우리\]?[\s,]/,"우리은행"],[/신한\s*은행|^\[?신한\]/,"신한은행"],[/^\[?국민\]/,"KB국민은행"],[/^\[?기업\]/,"IBK기업은행"],[/IBK|기업\s*은행/,"IBK기업은행"],[/우체국/,"우체국"],[/새마을/,"새마을금고"],[/SC\s*제일|제일\s*은행/,"SC제일은행"],[/iM\s*뱅크|대구\s*은행/,"iM뱅크"],[/부산\s*은행/,"부산은행"],[/경남\s*은행/,"경남은행"],[/광주\s*은행/,"광주은행"],[/전북\s*은행/,"전북은행"],[/수협/,"수협"],[/신협/,"신협"]];
 const FIN_HEAD=/^\[?\s*(?:KB\s*국민|KB|국민|신한|현대|삼성|롯데|하나|우리|NH\s*농협|NH|농협|BC|비씨|씨티|IBK\s*기업|IBK|기업|카카오\s*뱅크|카카오|토스\s*뱅크|토스|케이\s*뱅크|우체국|새마을\s*금고|새마을|SC\s*제일|iM\s*뱅크|대구|부산|경남|광주|전북|수협|신협)\s*(?:체크\s*카드|카드|은행|뱅크|체크)?\s*\]?/i;
 function parseGenericSms(text,today){
   const lines0=String(text).normalize("NFKC").replace(/\[\s*(?:Web발신|국제발신|국외발신|SMS)\s*\]/gi,"\n").split(/\r?\n/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean);
@@ -311,7 +316,7 @@ function parseGenericSms(text,today){
   const flat=lines0.join(" ");
   const isCancel=/취소|환불/.test(flat);
   const cardMark=/승인|일시불|\d{1,2}\s*개월|할부|결제|체크카드|카드/.test(flat);
-  const bankIn=/(?<![가-힣])입금(?!취소)/.test(flat),bankOut=/출금|이체출금|자동이체|송금/.test(flat);
+  const iIn=flat.search(/입금(?!\s*취소)/),iOut=flat.search(/출금|지급|자동이체|송금/);const bankIn=iIn>=0,bankOut=iOut>=0,inFirst=bankIn&&(!bankOut||iIn<iOut);
   const kind=(bankIn||bankOut)&&!/승인|일시불|\d{1,2}\s*개월/.test(flat)?"bank":cardMark?"card":null;
   if(!kind)return null;
   const issuer=((kind==="card"?FIN_CARDS:FIN_BANKS).find(([re])=>re.test(flat))||[null,kind==="card"?"카드":"은행"])[1];
@@ -323,8 +328,9 @@ function parseGenericSms(text,today){
   let amt=null,am=body.match(/(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)\s*원/);
   if(am)amt=parseInt(am[1].replace(/,/g,""),10);
   else if(kind==="bank"){const m2=body.match(/(?:출금|입금|송금|이체)\s*:?\s*(\d{1,3}(?:,\d{3})+|\d+)(?![\d/:])/);if(m2){am=m2;amt=parseInt(m2[1].replace(/,/g,""),10)}}
-  let date=null,dm=body.match(/(?<![\d/.])(\d{1,2})\s*[\/.]\s*(\d{1,2})(?![\d/])(?!\s*원)/)||body.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
-  if(dm)date=resolveDate(+dm[1],+dm[2],today);
+  let date=null;const fy=body.match(/(20\d{2})\s*[\/.\-년]\s*(\d{1,2})\s*[\/.\-월]\s*(\d{1,2})/);
+  if(fy){const d=`${fy[1]}-${pad(fy[2])}-${pad(fy[3])}`;if(d<=today&&!isNaN(parseYmd(d)))date=d}
+  if(!date){const dm=body.replace(/20\d{2}\s*[\/.\-]/g," ").match(/(?<![\d/.])(\d{1,2})\s*[\/.]\s*(\d{1,2})(?![\d/])(?!\s*원)/)||body.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);if(dm)date=resolveDate(+dm[1],+dm[2],today)}
   if(!amt||!date)return null;
   const tm=body.match(/(?<![\d:])(\d{1,2}):(\d{2})(?::\d{2})?(?![\d:])/);
   let inst=0;const im=body.match(/(\d{1,2})\s*개월/);if(im&&+im[1]>1)inst=+im[1];
@@ -335,9 +341,10 @@ function parseGenericSms(text,today){
     if(i===0||i===1){s=s.replace(FIN_HEAD," ")}
     s=s.replace(/\[[^\]]{0,20}\]/g," ");
     s=s.replace(/(?<![\d,])(\d{1,3}(?:,\d{3})+|\d+)\s*원(?:\s*\(\s*[^)]*\))?/g," ");
+    s=s.replace(/20\d{2}\s*[\/.\-년]\s*\d{1,2}\s*[\/.\-월]\s*\d{1,2}\s*일?/g," ");
     s=s.replace(/(?<![\d/.])\d{1,2}\s*[\/.]\s*\d{1,2}(?![\d/])/g," ").replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g," ").replace(/(?<![\d:])\d{1,2}:\d{2}(?::\d{2})?(?![\d:])/g," ");
     s=s.replace(/(?<![가-힣A-Za-z*])[가-힣]\*{1,2}[가-힣]?\s*님?/g," ").replace(/[가-힣]{2,4}\s*(?:고객)?님/g," ");
-    s=s.replace(/(?:해외|국내)?\s*(?:승인\s*취소|매출\s*취소|결제\s*취소|취소|승인|결제|사용|일시불|\d{1,2}\s*개월|할부|체크\s*카드|체크|출금|입금|송금|이체|자동이체|ATM|CD)/g," ");
+    s=s.replace(/(?:해외|국내)?\s*(?:승인\s*취소|매출\s*취소|결제\s*취소|취소|승인|결제|사용|일시불|\d{1,2}\s*개월|할부|체크\s*카드|체크|타행|당행|전자금융|인터넷|모바일|출금|입금|지급|송금|이체|자동이체|ATM|CD)/g," ");
     s=s.replace(/\([\d*\s\-]*\)/g," ").replace(/(?:^|\s)[\d*\-]{2,}(?=\s|$)/g," ").replace(/(?:^|\s)\d*\*[\d*]*(?=\s|$)/g," ");
     s=s.replace(/(?:^|\s)(?:카드|은행|님|원)(?=\s|$)/g," ");
     s=s.replace(/(?:^|\s)\d{1,3}(?:,\d{3})+(?=\s|$)/g," ");
@@ -349,7 +356,7 @@ function parseGenericSms(text,today){
   let merchant=(lines0.length>2?rest[rest.length-1]:rest.join(" "))||"";
   const wrap=merchant.match(/^\(\s*([^()]+?)\s*\)$/);if(wrap)merchant=wrap[1];
   if(merchant.length>30)merchant=merchant.slice(0,30);
-  const type=isCancel?(kind==="bank"?(bankIn?"in":"out"):"refund"):kind==="bank"?(bankIn&&!bankOut?"in":"out"):"out";
+  const type=isCancel?(kind==="bank"?(inFirst?"in":"out"):"refund"):kind==="bank"?(inFirst?"in":"out"):"out";
   const raw=maskSensitive(lines0.join(" "),name?[name]:[]);
   const bankNote=type==="in"?"입금 문자예요. 수입인지, 내 다른 계좌에서 옮긴 이체인지 확인하세요.":"은행 출금 문자예요. 생활비 지출인지, 내 다른 계좌로 옮긴 이체인지 확인하세요.";
   return{kind:"sms",issuer,cardMsg:kind==="card",bankMsg:kind==="bank",type,amt,date,time:tm?pad(tm[1])+":"+tm[2]:"",merchant:merchant||issuer+(kind==="bank"?(type==="in"?" 입금":" 출금"):" 결제"),cat:guessCat(merchant,type==="in"?"in":"out"),inst:type==="out"&&kind==="card"?inst:0,raw,hash:hashStr(raw),
@@ -468,6 +475,7 @@ function parseLine(line,base,today){
   if(amt<0){type="in";amt=-amt}
   let merchant=(s.slice(0,last.index)+" "+s.slice(last.index+last[0].length)).replace(/\s+/g," ").trim();
   if(type==="out"&&/(?:^|\s)(취소|환불)(?:\s|$)/.test(merchant)){type="refund";merchant=merchant.replace(/(?:^|\s)(취소|환불)(?=\s|$)/,"").trim()}
+  if(type==="out"&&/(?:^|\s)(입금|수입)(?=\s|$)/.test(merchant)){type="in";merchant=merchant.replace(/(?:^|\s)(입금|수입)(?=\s|$)/,"").trim()}
   if(type==="out"&&RULES_IN.some(([,r])=>r.test(merchant)))type="in";
   if(!amt)return{raw:line,kind:"bad",msg:"금액이 0이에요."};
   return{raw:line,kind:"quick",type,date,merchant:merchant||"(이름 없음)",amt:Math.round(amt),cat:guessCat(merchant,type==="in"?"in":"out"),inst:type==="out"&&inst>1?inst:0,src:"quick"};
@@ -498,6 +506,7 @@ function findDup(r){
   }
   return poss;
 }
+function rowAcct(r){const accts=settings().accounts,qa=acctById(quickAcct);const card=qa&&qa.kind==="card"?qa:accts.find(a=>a.kind==="card");const bank=accts.find(a=>a.kind==="bank")||accts.find(a=>a.kind!=="card");return (r.bankMsg?bank:r.cardMsg?card:(r.type==="in"||r.type==="tr")?bank:qa)||accts[0]||{}}
 function buildQuickRows(){
   const today=todayStr(),base=S.sel&&S.sel<=today?S.sel:today,out=[];
   for(const b of splitBlocks(quickText)){
@@ -513,7 +522,10 @@ function buildQuickRows(){
   }
   for(const r of out){
     if(r.kind==="bad"||r.kind==="unknown")continue;
-    const ov=quickOv[r.key]||{};if(ov.cat)r.cat=ov.cat;r.catTouched=!!ov.cat;
+    const ov=quickOv[r.key]||{};r.origType=r.type;
+    if(ov.type){if(ov.type!==r.type){r.type=ov.type;if(r.type!=="out")r.inst=0;if(!ov.cat)r.cat=guessCat(r.merchant,r.type==="in"?"in":"out")}r.review=false}
+    if(ov.cat)r.cat=ov.cat;r.catTouched=!!ov.cat;
+    if(r.type==="tr"){r.trIn=r.origType==="in";r.base=rowAcct(r).id;const others=settings().accounts.filter(a=>a.id!==r.base);const wantCard=!r.trIn&&/카드/.test(r.merchant||"");r.to=ov.to&&others.some(a=>a.id===ov.to)?ov.to:(others.find(a=>wantCard?a.kind==="card":a.kind!=="card")||others[0]||{}).id}
     r.flow=guessFlow(r.merchant);r.dup=findDup(r);r.include=ov.include!==undefined?ov.include:!(r.dup&&r.dup.kind==="exact");
   }
   return out;
@@ -529,8 +541,9 @@ const ICONS={
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="1.2";
+const APP_VERSION="1.3";
 const CHANGELOG=[
+ {v:"1.3",d:"2026-10-23",items:["빠른 입력 미리보기에서 줄마다 지출·수입·이체·환불을 고를 수 있어요. 이체는 받는 곳(보낸 곳) 계좌를 골라요.","은행 입출금용 카테고리(보험, 세금, 저축·투자, 대출 상환, 송금, 보험금, 중고 판매)를 추가했어요.","'급여입금'처럼 붙여 쓴 입금 문자와 연도가 있는 날짜도 읽어요.","카드대금은 이체로 골라 통장 → 카드로 기록하면 지출에 두 번 잡히지 않아요."]},
  {v:"1.2",d:"2026-10-22",items:["신한 외에 KB국민·현대·삼성·롯데·하나·우리·NH농협·BC 등 주요 카드사와 은행 결제 문자를 붙여넣으면 바로 읽어요.","은행 입금 문자도 수입으로 읽어요."]},
  {v:"1.1",d:"2026-10-22",items:["아래 탭에 '가이드'를 추가했어요. 설치 방법, 기록 요령, 업데이트 소식을 여기서 볼 수 있어요."]},
  {v:"1.0",d:"2026-10-22",items:["모아장부 첫 공개","빠른 입력, 신한카드·신한은행 문자 자동 읽기","할부·환불·이체 기록, 지출 성격과 월 장부 확정","백업 파일 저장·불러오기, 인터넷 없이 열기"]}
@@ -649,8 +662,8 @@ function viewGuide(){
   ${sec("홈 화면에 추가하기",(ios?iphone+galaxy:galaxy+iphone)+`<p class="muted" style="margin-top:10px">브라우저에서 연 장부와 홈 화면 아이콘으로 연 장부는 서로 따로예요. 처음부터 홈 화면 아이콘으로만 기록하세요.</p>`,!isStandalone())}
   ${sec("처음 설정",`<ol><li><b>자산</b> 탭에서 '주거래 통장, 신용카드, 현금'을 눌러 실제 이름으로 바꿔요. 카드는 <b>결제일</b>, 통장은 <b>시작 잔액</b>을 넣어요. <b>+ 추가</b>로 계좌·카드를 더 만들 수 있어요.</li><li><b>자산</b> 탭 아래 설정에서 <b>한 달 예산</b>을 넣어요.</li><li>아래 <b>+</b> 버튼으로 첫 거래를 기록하면 예시 화면이 사라지고 내 장부가 시작돼요.</li></ol>`)}
   ${sec("빠른 입력 요령",`<p>+ 버튼 → <b>빠른 입력·문자</b>에서 한 줄에 한 건씩 적고, 미리보기를 확인한 뒤 저장해요.</p>
-    <table class="gtable"><tr><td><code>스타벅스 5600</code></td><td>오늘 지출</td></tr><tr><td><code>어제 배민 23,000</code></td><td>어제·그제 날짜</td></tr><tr><td><code>10/18 쿠팡 129만 3개월</code></td><td>날짜, '만·천' 단위, 할부</td></tr><tr><td><code>+급여 320만</code></td><td>앞에 + 를 붙이면 수입</td></tr><tr><td><code>올리브영 취소 12000</code></td><td>'취소·환불'이 있으면 환불</td></tr></table>
-    <h4>알아두면 좋은 점</h4><ul><li>가맹점 이름을 보고 카테고리를 자동으로 골라요. 미리보기에서 바꾸면 다음부터 그 가맹점은 바꾼 카테고리로 들어가요.</li><li>같은 날 같은 금액이 이미 있으면 '비슷한 거래 있음'으로 알려줘요. 체크를 풀면 저장하지 않아요.</li><li>직접 적은 지출은 위에서 고른 결제 수단으로, 수입은 통장으로 들어가요.</li></ul>`)}
+    <table class="gtable"><tr><td><code>스타벅스 5600</code></td><td>오늘 지출</td></tr><tr><td><code>어제 배민 23,000</code></td><td>어제·그제 날짜</td></tr><tr><td><code>10/18 쿠팡 129만 3개월</code></td><td>날짜, '만·천' 단위, 할부</td></tr><tr><td><code>+급여 320만</code></td><td>앞에 + 를 붙이면 수입</td></tr><tr><td><code>올리브영 취소 12000</code></td><td>'취소·환불'이 있으면 환불</td></tr><tr><td><code>용돈 입금 30만</code></td><td>'입금'이 있으면 수입</td></tr></table>
+    <h4>알아두면 좋은 점</h4><ul><li>가맹점 이름을 보고 카테고리를 자동으로 골라요. 미리보기에서 바꾸면 다음부터 그 가맹점은 바꾼 카테고리로 들어가요.</li><li>미리보기 오른쪽에서 줄마다 <b>지출·수입·이체·환불</b>을 바꿀 수 있어요. 내 계좌끼리 옮긴 돈이나 <b>카드대금</b>은 <b>이체</b>로 골라야 지출이 두 번 잡히지 않아요.</li><li>같은 날 같은 금액이 이미 있으면 '비슷한 거래 있음'으로 알려줘요. 체크를 풀면 저장하지 않아요.</li><li>직접 적은 지출은 위에서 고른 결제 수단으로, 수입은 통장으로 들어가요.</li></ul>`)}
   ${sec("카드·은행 문자 붙여넣기",`<ol><li>문자 앱에서 결제 문자를 길게 눌러 복사해요.</li><li>+ 버튼 → 빠른 입력 칸에 붙여넣어요. 여러 개는 빈 줄로 나눠요.</li><li>미리보기를 확인하고 저장해요.</li></ol>
     <h4>읽을 수 있는 문자</h4><ul><li><b>카드</b>: 신한·KB국민·현대·삼성·롯데·하나·우리·NH농협·BC·씨티·카카오뱅크·토스뱅크 등의 승인, 할부, 취소(환불)</li><li><b>은행</b>: KB국민·신한·NH농협·하나·우리·IBK기업·카카오뱅크·토스뱅크·케이뱅크 등의 출금·입금. 지출(수입)인지 내 계좌 간 이체인지 '확인 필요'로 표시돼요.</li><li>미리보기에서 금액·날짜·가맹점이 맞는지 꼭 확인하고 저장하세요. 틀리면 체크를 풀고 "가맹점 금액" 한 줄로 적어주세요.</li><li>신한 외 금융사는 문자 형식이 조금씩 달라서 가끔 가맹점을 못 찾을 수 있어요. 그럴 땐 저장 후 눌러서 고치면 돼요.</li><li>해외 결제는 원화 청구 금액이 나온 뒤 한 건씩 입력해요.</li></ul>`)}
   ${sec("한 건씩 기록하기",`<p>+ 버튼 → <b>한 건씩</b>에서 지출·수입·이체·환불을 골라요.</p><ul><li><b>할부</b>: 결제 수단을 카드로 고르면 할부 개월을 고를 수 있어요. 매달 카드 결제일에 나눠서 지출로 잡혀요.</li><li><b>환불</b>: '원래 결제'를 고르면 그 결제의 분류에서 빠져요. 원래 금액보다 많이 환불할 수는 없어요.</li><li><b>이체</b>: 통장끼리 옮긴 돈은 지출로 세지 않아요.</li><li>기록을 누르면 수정하거나 삭제할 수 있어요.</li></ul>`)}
@@ -680,7 +693,7 @@ function quickHtml(){
   if(!quickAcct){const a=settings().accounts;quickAcct=(a.find(x=>x.kind==="card")||a[0]||{}).id}
   return `<div class="field"><label for="qt">한 줄에 한 건, 또는 카드·은행 문자를 그대로 붙여넣으세요</label><textarea class="inp" id="qt" autofocus placeholder="스타벅스 5600&#10;어제 배민 23,000&#10;10/18 쿠팡 129만 3개월&#10;+급여 320만&#10;&#10;[Web발신]&#10;신한카드(1234)승인 홍*동 12,000원(일시불)10/21 12:34 스타벅스">${esc(quickText)}</textarea></div>
   <p class="note">카드사·은행 결제 문자를 그대로 붙여넣으면 바로 읽어요. 못 읽은 문자는 "가맹점 금액" 한 줄로 적어주세요. 문자 여러 개는 빈 줄로 나누면 가장 정확해요.</p>
-  <div class="field"><label for="qa">직접 적은 지출의 결제 수단</label><select class="inp" id="qa">${acctOptions(quickAcct)}</select></div>
+  <div class="field"><label for="qa">직접 적은 지출의 결제 수단 (수입·이체는 통장 기준)</label><select class="inp" id="qa">${acctOptions(quickAcct)}</select></div>
   <div id="qprev">${quickPrev()}</div>`;
 }
 function quickPrev(){
@@ -694,8 +707,9 @@ function quickPrev(){
     const src=r.src==="sms"?`<span class="pill">${esc(r.issuer)}</span>`:r.src==="ai-sms"?`<span class="pill">Claude 읽음</span>`:"";
     const dup=r.dup?`<span class="pill warn">${r.dup.kind==="exact"?"이미 저장됨":"비슷한 거래 있음"}</span>`:"";
     const tags=(r.inst?`<span class="pill acc">${r.inst}개월</span>`:"")+(r.type==="refund"?`<span class="pill acc">환불</span>`:"")+(r.review?`<span class="pill warn">확인 필요</span>`:"")+src+dup;
-    const sub=[fmtDate(r.date),r.time||"",r.flow?flowShort(r.flow):"",r.dup?`${esc(r.dup.t.merchant||"이체")} ${won(r.dup.t.amt)}원과 같은 날·같은 금액`:""].filter(Boolean).join(" · ");
-    return `<div class="row ${r.include?"":"off"}"><input type="checkbox" data-qinc="${i}" ${r.include?"checked":""} aria-label="저장에 포함"><span class="main"><span class="t">${esc(r.merchant)}${tags}</span><span class="s wrap">${sub}</span></span><span class="right"><span class="amt num ${r.type==="in"?"in":r.type==="refund"?"ref":""}">${r.type==="out"?"-":"+"}${won(r.amt)}</span><select data-qcat="${i}" aria-label="카테고리">${catOptions(r.type==="in"?"in":"out",r.cat)}</select></span></div>`;
+    const trTxt=r.type==="tr"?((acctById(r.trIn?r.to:r.base)||{}).name||"?")+" → "+((acctById(r.trIn?r.base:r.to)||{}).name||"?"):"";
+    const sub=[fmtDate(r.date),r.time||"",trTxt?esc(trTxt):"",r.flow&&r.type!=="tr"&&r.type!=="in"?flowShort(r.flow):"",r.dup?`${esc(r.dup.t.merchant||"이체")} ${won(r.dup.t.amt)}원과 같은 날·같은 금액`:""].filter(Boolean).join(" · ");
+    return `<div class="row ${r.include?"":"off"}"><input type="checkbox" data-qinc="${i}" ${r.include?"checked":""} aria-label="저장에 포함"><span class="main"><span class="t">${esc(r.merchant)}${tags}</span><span class="s wrap">${sub}</span></span><span class="right"><span class="amt num ${r.type==="in"?"in":r.type==="refund"?"ref":r.type==="tr"?"muted":""}">${r.type==="out"?"-":r.type==="tr"?"":"+"}${won(r.amt)}</span><select data-qtype="${i}" aria-label="거래 종류">${[["out","지출"],["in","수입"],["tr","이체"],["refund","환불"]].map(([k,l])=>`<option value="${k}" ${r.type===k?"selected":""}>${l}</option>`).join("")}</select>${r.type==="tr"?`<select data-qto="${i}" aria-label="${r.trIn?"보낸 곳":"받는 곳"}">${acctOptions(r.to,a=>a.id!==r.base)}</select>`:`<select data-qcat="${i}" aria-label="카테고리">${catOptions(r.type==="in"?"in":"out",r.cat)}</select>`}</span></div>`;
   }).join("");
   return `<div class="list prev" style="margin-bottom:12px">${rows}</div>
   ${unknown.length&&S.sample?`<button class="btn ghost" data-ai-read="1" ${aiBusy?"disabled":""} style="margin-bottom:8px">${aiBusy?"Claude가 읽는 중…":`처음 보는 문자 ${unknown.length}건 Claude로 읽기`}</button>`:""}
@@ -763,7 +777,7 @@ function oneHtml(editing){
   <div class="field"><label for="f-amt">금액</label><input class="inp big" id="f-amt" inputmode="numeric" ${editing?"":"autofocus"} value="${d.amt?won(d.amt):""}" placeholder="0"></div>
   ${d.type!=="tr"?`<div class="field"><label for="f-mer">${d.type==="in"?"내용":"가맹점"}</label><input class="inp" id="f-mer" value="${esc(d.merchant)}" placeholder="${d.type==="in"?"예: 회사 급여":"예: 스타벅스 강남점"}" autocomplete="off"></div>
   <div class="two"><div class="field"><label for="f-cat">카테고리</label><select class="inp" id="f-cat">${catOptions(d.type==="in"?"in":"out",d.cat)}</select></div><div class="field"><label for="f-acct">${d.type==="in"?"입금 계좌":d.type==="refund"?"환불 받은 곳":"결제 수단"}</label><select class="inp" id="f-acct">${acctOptions(d.acct,d.type==="in"?(a=>a.kind!=="card"):null)}</select></div></div>`
-  :`<div class="two"><div class="field"><label for="f-acct">보내는 곳</label><select class="inp" id="f-acct">${acctOptions(d.acct,a=>a.kind!=="card")}</select></div><div class="field"><label for="f-to">받는 곳</label><select class="inp" id="f-to">${acctOptions(d.to,a=>a.kind!=="card")}</select></div></div>`}
+  :`<div class="two"><div class="field"><label for="f-acct">보내는 곳</label><select class="inp" id="f-acct">${acctOptions(d.acct,a=>a.kind!=="card")}</select></div><div class="field"><label for="f-to">받는 곳</label><select class="inp" id="f-to">${acctOptions(d.to,a=>a.id!==d.acct)}</select></div></div>`}
   ${flowField}${extra}
   <div class="field"><label for="f-date">날짜</label><input class="inp" type="date" id="f-date" value="${d.date}"></div>
   <div class="field"><label for="f-memo">메모</label><input class="inp" id="f-memo" value="${esc(d.memo)}" placeholder="${d.type==="tr"?"예: 생활비 통장으로":"선택"}"></div>
@@ -808,7 +822,9 @@ function saveQuick(){
   const ok=quickRows.filter(r=>r.kind!=="bad"&&r.kind!=="unknown"&&r.include);if(!ok.length)return;
   const accts=settings().accounts,qa=acctById(quickAcct);
   const card=qa&&qa.kind==="card"?qa:accts.find(a=>a.kind==="card"),bank=accts.find(a=>a.kind==="bank")||accts.find(a=>a.kind!=="card");
+  if(ok.some(r=>r.type==="tr"&&!r.to)){toast("이체하려면 계좌가 2개 이상 있어야 해요. 자산 탭에서 계좌를 추가하세요.");return}
   ok.forEach((r,i)=>{
+    if(r.type==="tr"){putTx({id:uid(),type:"tr",amt:r.amt,date:r.date,time:r.time||undefined,acct:r.trIn?r.to:r.base,to:r.trIn?r.base:r.to,memo:(r.merchant&&r.merchant!=="(이름 없음)")?r.merchant:"",by:S.me||"",at:Date.now()+i,src:r.src||"quick",raw:r.raw&&r.src!=="quick"?r.raw:undefined,hash:r.hash||undefined,review:false,confirmed:false},true);return}
     const acc=r.bankMsg?bank:r.cardMsg?card:r.type==="in"?bank:qa;
     const t={id:uid(),type:r.type,amt:r.amt,date:r.date,time:r.time||undefined,merchant:r.merchant,cat:r.cat,flow:r.flow||"",acct:(acc||accts[0]||{}).id,memo:"",by:S.me||"",at:Date.now()+i,src:r.src||"quick",raw:r.raw&&r.src!=="quick"?r.raw:undefined,hash:r.hash||undefined,review:!!r.review,reviewNote:r.review?r.reviewNote:undefined,confirmed:false};
     if(r.type==="refund")t.cancelOf="";
@@ -952,6 +968,8 @@ document.addEventListener("change",e=>{
   else if(t.id==="f-acct"||t.id==="f-date"){readOne();draft.instFirst="";renderAdd()}
   else if(t.id==="f-inst"||t.id==="f-first"||t.id==="f-orig"){readOne();renderAdd()}
   else if(t.dataset.qcat!==undefined){const r=quickRows[+t.dataset.qcat];if(r){quickOv[r.key]={...(quickOv[r.key]||{}),cat:t.value}}}
+  else if(t.dataset.qtype!==undefined){const r=quickRows[+t.dataset.qtype];if(r){quickOv[r.key]={...(quickOv[r.key]||{}),type:t.value};refreshQuick()}}
+  else if(t.dataset.qto!==undefined){const r=quickRows[+t.dataset.qto];if(r){quickOv[r.key]={...(quickOv[r.key]||{}),to:t.value};refreshQuick()}}
   else if(t.dataset.qinc!==undefined){const r=quickRows[+t.dataset.qinc];if(r){quickOv[r.key]={...(quickOv[r.key]||{}),include:t.checked};refreshQuick()}}
   else if(t.id==="qa")quickAcct=t.value;
   else if(t.id==="budget"){const s=JSON.parse(JSON.stringify(settings()));s.budget=parseInt(t.value.replace(/[^\d]/g,""),10)||0;putSettings(s);toast("예산을 저장했어요.")}
