@@ -1,6 +1,6 @@
 /* 모아장부 오프라인용. 앱을 고치면 VERSION을 올리세요. 장부 데이터는 여기서 다루지 않아요(브라우저 저장소에 있음). */
-const VERSION = "moajangbu-v7";
-const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
+const VERSION = "moajangbu-v8";
+const FILES = ["./", "./index.html", "./manifest.webmanifest?v=5", "./icon-192.png?v=5", "./icon-512.png?v=5", "./icon-maskable-512.png?v=5", "./apple-touch-icon.png?v=5"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));

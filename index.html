@@ -11,9 +11,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="모아장부">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest?v=5">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=5">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
 <style>
@@ -554,8 +554,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="1.5";
+const APP_VERSION="1.5.1";
 const CHANGELOG=[
+ {v:"1.5.1",d:"2026-10-23",items:["아이폰 홈 화면에 추가할 때 새 저금통 아이콘이 나오도록 고쳤어요."]},
  {v:"1.5",d:"2026-10-23",items:["새 디자인으로 바꿨어요. 흰 바탕에 파란 포인트, 이번 달 지출을 크게 보여주는 깔끔한 화면이에요.","새 로고(저금통)와 홈 화면 아이콘을 적용했어요. 이미 추가한 아이콘은 지우고 다시 추가하면 새 아이콘으로 바뀌어요."]},
  {v:"1.4",d:"2026-10-23",items:["자산 탭의 한 달 예산을 고친 뒤 바로 탭을 바꾸거나 앱을 닫으면 저장되지 않던 문제를 고쳤어요. 이제 입력을 멈추면 바로 저장돼요."]},
  {v:"1.3",d:"2026-10-23",items:["빠른 입력 미리보기에서 줄마다 지출·수입·이체·환불을 고를 수 있어요. 이체는 받는 곳(보낸 곳) 계좌를 골라요.","은행 입출금용 카테고리(보험, 세금, 저축·투자, 대출 상환, 송금, 보험금, 중고 판매)를 추가했어요.","'급여입금'처럼 붙여 쓴 입금 문자와 연도가 있는 날짜도 읽어요.","카드대금은 이체로 골라 통장 → 카드로 기록하면 지출에 두 번 잡히지 않아요."]},
