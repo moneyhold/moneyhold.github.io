@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>모아장부</title>
 <meta name="description" content="내 휴대폰에만 저장되는 가계부">
-<meta name="theme-color" content="#edf1ee" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1513" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1014" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="모아장부">
@@ -15,23 +15,23 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
 <style>
-/* Layout: one phone-width column, passbook-style ledger rows, bottom tab bar + add button */
+/* Layout: A안 미니멀 — 흰 바탕, 코발트 포인트 하나, 큰 지출 숫자, 선으로 나눈 목록 */
 :root{
-  --bg:#edf1ee; --surface:#ffffff; --surface2:#e2e9e5; --fg:#16201c; --muted:#5b6a63; --line:#d2dbd6;
-  --accent:#1d6b57; --accent-soft:#d6ebe3; --accent-ink:#ffffff; --in:#2456b3; --warn:#a24a17; --warn-soft:#f8e3d5; --danger:#b3261e;
-  --display:"Gowun Batang", "Nanum Myeongjo", serif;
-  --body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  --num:"IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  --bg:#FFFFFF; --surface:#FFFFFF; --surface2:#F5F6F8; --fg:#121417; --muted:#5F6672; --line:#E6E8EC;
+  --accent:#2F5BEA; --accent-soft:#EEF2FF; --accent-ink:#FFFFFF; --in:#2F5BEA; --warn:#B4400B; --warn-soft:#FFF1E8; --danger:#C62828;
+  --display:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --num:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --r:14px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0f1513; --surface:#171f1c; --surface2:#202a26; --fg:#e5ece8; --muted:#92a199; --line:#2b3732;
-  --accent:#52b896; --accent-soft:#1c3a30; --accent-ink:#06120d; --in:#82abff; --warn:#f2995e; --warn-soft:#3a2416; --danger:#ff8a80; color-scheme:dark}}
+  --bg:#0E1014; --surface:#0E1014; --surface2:#1B1F26; --fg:#EDEFF3; --muted:#9AA1AD; --line:#262B34;
+  --accent:#6E8DFF; --accent-soft:#1A2246; --accent-ink:#0B1020; --in:#8EA6FF; --warn:#FF9F6B; --warn-soft:#3A2416; --danger:#FF8A80; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0f1513; --surface:#171f1c; --surface2:#202a26; --fg:#e5ece8; --muted:#92a199; --line:#2b3732;
-  --accent:#52b896; --accent-soft:#1c3a30; --accent-ink:#06120d; --in:#82abff; --warn:#f2995e; --warn-soft:#3a2416; --danger:#ff8a80; color-scheme:dark}
+  --bg:#0E1014; --surface:#0E1014; --surface2:#1B1F26; --fg:#EDEFF3; --muted:#9AA1AD; --line:#262B34;
+  --accent:#6E8DFF; --accent-soft:#1A2246; --accent-ink:#0B1020; --in:#8EA6FF; --warn:#FF9F6B; --warn-soft:#3A2416; --danger:#FF8A80; color-scheme:dark}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);-webkit-text-size-adjust:100%}
 html,body{height:100%}
 body{margin:0;font-size:15px}
@@ -50,9 +50,20 @@ button{cursor:pointer}
 .in{color:var(--in)}
 .ref{color:var(--accent)}
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:8px;padding-block:14px 10px}
-.brand{font-family:var(--display);font-size:20px;letter-spacing:-.01em}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px;letter-spacing:-.02em}
+.brand .mark{width:28px;height:28px;border-radius:8px;background:var(--accent);display:grid;place-items:center;flex:none}
+.hero{padding:4px 2px 2px;margin-bottom:6px}
+.hero .lbl{font-size:13px;color:var(--muted)}
+.hero .big{font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1.25;margin-top:2px;font-variant-numeric:tabular-nums}
+.hero .big span{font-size:20px;font-weight:700;margin-left:2px}
+.hero .sub{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;font-size:13px;color:var(--muted)}
+.hero .sub b{color:var(--fg);font-weight:700;font-variant-numeric:tabular-nums}
+.hero .sub b.in{color:var(--in)}
+.hero .sub b.over{color:var(--warn)}
+.hero .meter{margin-top:12px}
+.hero .status-row{margin-top:12px;background:var(--surface2);border-radius:12px;padding:12px 14px}
 .month{display:flex;align-items:center;gap:2px}
-.month b{font-weight:600;min-width:92px;text-align:center}
+.month b{font-weight:700;min-width:56px;text-align:center}
 .icon-btn{border:0;background:transparent;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--muted)}
 .icon-btn:hover{background:var(--surface2)}
 .banner{background:var(--accent-soft);color:var(--fg);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
@@ -72,22 +83,23 @@ button.status-row:hover{background:var(--surface2)}
 .meter{height:6px;border-radius:6px;background:var(--surface2);overflow:hidden;margin-top:8px}
 .meter i{display:block;height:100%;background:var(--accent);border-radius:6px}
 .meter.over i{background:var(--warn)}
-.cal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 6px 10px;margin-bottom:16px}
+.cal{padding:12px 0 6px;margin-bottom:6px}
 .cal .dow,.cal .grid{display:grid;grid-template-columns:repeat(7,1fr)}
 .cal .dow span{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
 .cal .dow span:first-child{color:var(--danger)}
 .day{border:0;background:transparent;border-radius:10px;min-height:54px;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
 .day .d{font-size:13px;width:24px;height:24px;line-height:24px;border-radius:50%;text-align:center}
-.day.today .d{background:var(--fg);color:var(--bg);font-weight:600}
-.day.sel{background:var(--accent-soft)}
+.day.today{background:var(--accent-soft)}
+.day.today .d{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.day.sel{box-shadow:inset 0 0 0 1.5px var(--accent)}
 .day .a{font-family:var(--num);font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .day.blank{visibility:hidden}
 h2.sec{font-size:13px;font-weight:600;color:var(--muted);margin:18px 2px 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;letter-spacing:.02em}
-.list{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-.row{display:flex;align-items:center;gap:12px;padding:11px 14px;border:0;background:transparent;width:100%;text-align:left;border-top:1px solid var(--line)}
+.list{background:transparent;border-top:1px solid var(--line);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 2px;border:0;background:transparent;width:100%;text-align:left;border-top:1px solid var(--line)}
 .row:first-child{border-top:0}
 button.row:hover{background:var(--surface2)}
-.cat{flex:none;width:36px;height:36px;border-radius:11px;background:var(--surface2);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--muted)}
+.cat{flex:none;width:36px;height:36px;border-radius:12px;background:var(--surface2);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--muted)}
 .cat.tr{background:transparent;border:1px dashed var(--line)}
 .cat.rf{background:var(--accent-soft);color:var(--accent)}
 .row .main{flex:1;min-width:0}
@@ -102,7 +114,7 @@ button.row:hover{background:var(--surface2)}
 .pill.solid{background:var(--accent);color:var(--accent-ink)}
 .status-row .pill{margin-left:0}
 .empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:14px}
-.search{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.search{width:100%;border:0;background:var(--surface2);border-radius:12px;padding:10px 12px;margin-bottom:10px}
 .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px}
 .chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:5px 12px;font-size:13px}
 .chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
@@ -120,12 +132,12 @@ button.row:hover{background:var(--surface2)}
 .trend .col span{font-size:11px;color:var(--muted)}
 .trend .col em{font-style:normal;font-family:var(--num);font-size:10px;color:var(--muted);white-space:nowrap}
 .actions{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.total{display:flex;justify-content:space-between;align-items:baseline;padding:16px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.total{display:flex;justify-content:space-between;align-items:baseline;padding:16px 14px;background:var(--surface2);border:0;border-radius:var(--r)}
 .total .v{font-size:24px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 nav.tabs .in-tabs{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 .gver{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;margin:4px 2px 12px}
-details.guide{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+details.guide{background:var(--surface2);border:0;border-radius:var(--r);margin-bottom:10px;overflow:hidden}
 details.guide>summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
 details.guide>summary::-webkit-details-marker{display:none}
 details.guide>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-top:-4px;transition:transform .15s}
@@ -147,13 +159,13 @@ details.guide>summary .tag{font-size:11px;font-weight:500;color:var(--accent);ba
 nav.tabs button{border:0;background:transparent;padding:10px 0 12px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
 nav.tabs button[aria-current="page"]{color:var(--fg);font-weight:600}
 nav.tabs svg{width:22px;height:22px}
-.fab{position:fixed;z-index:7;right:max(18px,calc((100vw - 480px)/2 + 18px));bottom:calc(76px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:18px;border:0;background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 18px rgba(0,0,0,.18);display:grid;place-items:center}
+.fab{position:fixed;z-index:7;right:max(18px,calc((100vw - 480px)/2 + 18px));bottom:calc(76px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:28px;border:0;background:var(--accent);color:var(--accent-ink);box-shadow:0 8px 20px rgba(47,91,234,.28);display:grid;place-items:center}
 .fab svg{width:26px;height:26px}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:20;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--bg);width:100%;max-width:480px;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding:6px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
-.sheet .grab{width:40px;height:4px;border-radius:4px;background:var(--line);margin:6px auto 8px}
+.sheet{background:var(--bg);width:100%;max-width:480px;max-height:92%;overflow-y:auto;border-radius:24px 24px 0 0;padding:6px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet .grab{width:40px;height:4px;border-radius:4px;background:#D9DCE1;margin:6px auto 8px}
 .sheet header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.sheet h3{margin:0;font-size:17px}
+.sheet h3{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface2);border-radius:12px;padding:3px;margin-bottom:12px}
 .seg button{border:0;background:transparent;padding:8px 4px;border-radius:9px;font-size:14px;color:var(--muted)}
 .seg button.on{background:var(--surface);color:var(--fg);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
@@ -163,7 +175,7 @@ nav.tabs svg{width:22px;height:22px}
 textarea.inp{min-height:140px;resize:vertical;line-height:1.7;font-family:var(--body)}
 .inp.big{font-family:var(--num);font-size:24px;padding:10px 12px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.btn{border:0;border-radius:12px;padding:13px 14px;font-weight:600;width:100%;background:var(--accent);color:var(--accent-ink)}
+.btn{border:0;border-radius:14px;padding:15px 14px;font-weight:700;font-size:16px;width:100%;background:var(--accent);color:var(--accent-ink)}
 .btn:disabled{opacity:.45;cursor:default}
 .btn.ghost{background:var(--surface2);color:var(--fg)}
 .btn.danger{background:transparent;color:var(--danger);border:1px solid var(--line)}
@@ -183,7 +195,7 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.7;font-family:var(--
 .drop input{display:none}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(148px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--fg);color:var(--bg);padding:10px 14px;border-radius:12px;font-size:14px;display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);box-shadow:0 6px 18px rgba(0,0,0,.2)}
 .toast button{border:0;background:transparent;color:var(--accent-soft);font-weight:600;padding:0;white-space:nowrap}
-.card-sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;font-size:14px}
+.card-sec{background:var(--surface2);border:0;border-radius:var(--r);padding:14px;font-size:14px}
 .card-sec p{margin:0 0 8px}
 .card-sec p:last-child{margin:0}
 @media (prefers-reduced-motion: no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
@@ -538,11 +550,13 @@ const ICONS={
  stat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>',
  acct:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10.5h18M7 15h4"/></svg>'
 };
+const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="14" r="9" fill="var(--accent-ink)"/><rect x="47.5" y="9" width="5" height="10" rx="2.5" fill="var(--accent)"/><rect x="30" y="27" width="40" height="9" rx="4" fill="var(--accent-ink)"/><rect x="22" y="38" width="56" height="50" rx="16" fill="var(--accent-ink)"/><rect x="31" y="70" width="38" height="8" rx="4" fill="var(--accent)"/></svg>';
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="1.4";
+const APP_VERSION="1.5";
 const CHANGELOG=[
+ {v:"1.5",d:"2026-10-23",items:["새 디자인으로 바꿨어요. 흰 바탕에 파란 포인트, 이번 달 지출을 크게 보여주는 깔끔한 화면이에요.","새 로고(저금통)와 홈 화면 아이콘을 적용했어요. 이미 추가한 아이콘은 지우고 다시 추가하면 새 아이콘으로 바뀌어요."]},
  {v:"1.4",d:"2026-10-23",items:["자산 탭의 한 달 예산을 고친 뒤 바로 탭을 바꾸거나 앱을 닫으면 저장되지 않던 문제를 고쳤어요. 이제 입력을 멈추면 바로 저장돼요."]},
  {v:"1.3",d:"2026-10-23",items:["빠른 입력 미리보기에서 줄마다 지출·수입·이체·환불을 고를 수 있어요. 이체는 받는 곳(보낸 곳) 계좌를 골라요.","은행 입출금용 카테고리(보험, 세금, 저축·투자, 대출 상환, 송금, 보험금, 중고 판매)를 추가했어요.","'급여입금'처럼 붙여 쓴 입금 문자와 연도가 있는 날짜도 읽어요.","카드대금은 이체로 골라 통장 → 카드로 기록하면 지출에 두 번 잡히지 않아요."]},
  {v:"1.2",d:"2026-10-22",items:["신한 외에 KB국민·현대·삼성·롯데·하나·우리·NH농협·BC 등 주요 카드사와 은행 결제 문자를 붙여넣으면 바로 읽어요.","은행 입금 문자도 수입으로 읽어요."]},
@@ -555,7 +569,7 @@ function render(){
   const body=S.tab==="cal"?viewCal(ents):S.tab==="list"?viewList(ents):S.tab==="stat"?viewStat(ents):S.tab==="guide"?viewGuide():viewAcct(ents);
   $("#fab").hidden=S.tab==="guide";
   const mm=parseYmd(S.month+"-01");
-  const monthNav=S.tab!=="acct"&&S.tab!=="guide"?`<div class="month"><button class="icon-btn" data-mon="-1" aria-label="이전 달">‹</button><b>${mm.getFullYear()}년 ${mm.getMonth()+1}월</b><button class="icon-btn" data-mon="1" aria-label="다음 달">›</button></div>`:"";
+  const monthNav=S.tab!=="acct"&&S.tab!=="guide"?`<div class="month"><button class="icon-btn" data-mon="-1" aria-label="이전 달">‹</button><b>${mm.getFullYear()!==new Date().getFullYear()?mm.getFullYear()+"년 ":""}${mm.getMonth()+1}월</b><button class="icon-btn" data-mon="1" aria-label="다음 달">›</button></div>`:"";
   let banner="";
   if(S.readOnly)banner=`<div class="banner warn"><b>보기 권한이라 기록할 수 없어요.</b> 앱 주인에게 이메일로 '편집자' 초대를 요청하세요.</div>`;
   else if(isDemo()&&S.tab!=="guide")banner=`<div class="banner"><b>예시 화면이에요.</b> 첫 거래를 기록하면 예시는 사라지고 이 휴대폰에만 저장돼요.</div>`;
@@ -563,7 +577,7 @@ function render(){
     if(S.tx.size>=5&&(days===null||days>=14))banner=`<div class="banner">이 장부는 <b>이 휴대폰에만</b> 저장돼요. ${days===null?"아직 백업한 적이 없어요.":days+"일 동안 백업하지 않았어요."} <button class="linkbtn" data-backup="1">지금 백업하기</button></div>`;}
   let tip="";try{if(!isStandalone()&&!localStorage.getItem(TKEY))tip=`<div class="banner"><button class="x" data-tip-close="1" aria-label="안내 닫기">✕</button><b>앱처럼 쓰려면 홈 화면에 추가하세요.</b> ${/iPhone|iPad|iPod/.test(navigator.userAgent)?"Safari 공유 버튼 → 홈 화면에 추가":"브라우저 메뉴 → 홈 화면에 추가"}</div>`}catch(e){}
   banner=tip+banner;
-  $("#app").innerHTML=`<header class="top"><span class="brand">모아장부</span>${monthNav}</header>${banner}${body}`;
+  $("#app").innerHTML=`<header class="top"><span class="brand"><span class="mark">${LOGO_SVG}</span>모아장부</span>${monthNav}</header>${banner}${body}`;
 }
 function fmtDate(s){const d=parseYmd(s);return `${d.getMonth()+1}.${d.getDate()} (${"일월화수목금토"[d.getDay()]})`}
 function rowHtml(e){
@@ -582,7 +596,7 @@ function statusRow(st){
 }
 function summaryHtml(st){
   const b=settings().budget||0,pct=b?Math.min(100,Math.max(0,st.exp/b*100)):0,over=b&&st.exp>b;
-  return `<div class="summary"><div><div class="lbl">수입</div><div class="val num in">+${won(st.inc)}</div></div><div><div class="lbl">지출</div><div class="val num">-${won(st.exp)}</div></div>${b?`<div class="wide"><div style="display:flex;justify-content:space-between;gap:8px"><span class="lbl">이번 달 예산 ${won(b)}원</span><span class="lbl num" style="${over?"color:var(--warn)":""}">${over?won(st.exp-b)+" 초과":won(b-st.exp)+" 남음"}</span></div><div class="meter ${over?"over":""}"><i style="width:${pct}%"></i></div></div>`:""}${statusRow(st)}</div>`;
+  return `<section class="hero"><div class="lbl">이번 달 지출</div><div class="big">${won(st.exp)}<span>원</span></div><div class="sub"><span>수입 <b class="in">${won(st.inc)}</b></span>${b?`<span>${over?"예산 초과":"예산 남음"} <b class="${over?"over":""}">${won(Math.abs(b-st.exp))}</b></span><span>예산 ${won(b)}</span>`:""}</div>${b?`<div class="meter ${over?"over":""}"><i style="width:${pct}%"></i></div>`:""}${statusRow(st)}</section>`;
 }
 function viewCal(ents){
   const st=monthStats(S.month,ents);const first=parseYmd(S.month+"-01");const days=new Date(first.getFullYear(),first.getMonth()+1,0).getDate();const t=todayStr();
