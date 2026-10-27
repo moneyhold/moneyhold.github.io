@@ -134,6 +134,10 @@ button.row:hover{background:var(--surface2)}
 .actions{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .total{display:flex;justify-content:space-between;align-items:baseline;padding:16px 14px;background:var(--surface2);border:0;border-radius:var(--r)}
 .total .v{font-size:24px}
+.total.col{flex-direction:column;align-items:stretch;gap:8px}
+.total .r{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px}
+.total .r b{font-weight:700;font-variant-numeric:tabular-nums}
+.total .r.big{font-size:18px;font-weight:800;padding-top:10px;border-top:1px solid var(--line)}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 nav.tabs .in-tabs{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 .gver{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;margin:4px 2px 12px}
@@ -243,7 +247,7 @@ const RULES_IN=[["급여",/급여|월급|상여|보너스|salary/i],["보험금"
 const CUR={"달러":"USD","유로":"EUR","엔":"JPY","위안":"CNY","파운드":"GBP"};
 const DEFAULT_SETTINGS={budget:1500000,accounts:[
  {id:"a1",name:"주거래 통장",kind:"bank",init:0},
- {id:"a2",name:"신용카드",kind:"card",init:0,payDay:14},
+ {id:"a2",name:"신용카드",kind:"card",init:0,payDay:14,cycMon:-1,cycDay:1},
  {id:"a3",name:"현금",kind:"cash",init:0}
 ]};
 
@@ -260,7 +264,7 @@ const short=n=>{const a=Math.abs(n);if(a>=1e8)return (n/1e8).toFixed(1).replace(
 const normKey=s=>String(s||"").toLowerCase().replace(/\s+/g,"").slice(0,60);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 function addMonthsPay(dateStr,i,payDay){const d=parseYmd(dateStr);const y=d.getFullYear(),m=d.getMonth()+i;const last=new Date(y,m+1,0).getDate();return ymd(new Date(y,m,Math.min(payDay??d.getDate(),last)))}
-function firstPayFor(purchase,acct){const pd=acct&&acct.payDay?acct.payDay:parseYmd(purchase).getDate();return addMonthsPay(purchase.slice(0,8)+"01",1,pd)}
+function firstPayFor(purchase,acct){if(acct&&acct.kind==="card")return payDateFor(acct,purchase);const pd=acct&&acct.payDay?acct.payDay:parseYmd(purchase).getDate();return addMonthsPay(purchase.slice(0,8)+"01",1,pd)}
 function hashStr(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)}return (h>>>0).toString(16)}
 
 /* ===== PAMO common.py 이식 ===== */
@@ -463,6 +467,19 @@ function pamoSummary(month){
    unresolved_count:0,needs_review_count:st.review,transaction_count:st.count,generated_at:new Date().toISOString().replace(/\.\d{3}Z$/,"+00:00")};
 }
 
+
+/* ===== 신용카드 결제 주기: 쓴 날 지출, 결제일 대금은 이체 ===== */
+function payDateOn(card,y,m){const last=new Date(y,m+1,0).getDate();return ymd(new Date(y,m,Math.min(card.payDay||14,last)))}
+function cardCycle(card,payDate){const p=parseYmd(payDate);const sm=card.cycMon??-1,sd=card.cycDay||1;const y=p.getFullYear(),m=p.getMonth()+sm;const last=new Date(y,m+1,0).getDate();const st=new Date(y,m,Math.min(sd,last));const nx=new Date(st.getFullYear(),st.getMonth()+1,1);const nlast=new Date(nx.getFullYear(),nx.getMonth()+1,0).getDate();const en=new Date(nx.getFullYear(),nx.getMonth(),Math.min(sd,nlast));en.setDate(en.getDate()-1);return{start:ymd(st),end:ymd(en)}}
+function payDateFor(card,date){const d=parseYmd(date);for(let k=0;k<4;k++){const pd=payDateOn(card,d.getFullYear(),d.getMonth()+k);const c=cardCycle(card,pd);if(date>=c.start&&date<=c.end)return pd}return payDateOn(card,d.getFullYear(),d.getMonth()+1)}
+function nextPayDate(card,today){const t=parseYmd(today);const pd=payDateOn(card,t.getFullYear(),t.getMonth());return pd>=today?pd:payDateOn(card,t.getFullYear(),t.getMonth()+1)}
+function billFor(card,payDate,ents){const c=cardCycle(card,payDate);let amt=0,n=0;for(const e of ents){if(e.acct!==card.id)continue;if(e.instIdx){if(e.date===payDate){amt+=e.amt;n++}continue}if(e.date<c.start||e.date>c.end)continue;if(e.type==="out"){amt+=e.amt;n++}else if(e.type==="refund"){amt-=e.amt;n++}}return{amt,n,start:c.start,end:c.end}}
+function paidFor(card,payDate,ents){const p=parseYmd(payDate);let s=0;for(const e of ents){if(e.type!=="tr"||e.to!==card.id)continue;const dd=Math.abs((parseYmd(e.date)-p)/864e5);if(dd<=7)s+=e.amt}return s}
+const md=s=>{const d=parseYmd(s);return `${d.getMonth()+1}/${d.getDate()}`};
+function cycleText(card){const sm=card.cycMon??-1,sd=card.cycDay||1;return `${sm===-2?"전전월":"전월"} ${sd}일부터 한 달 사용분`}
+function matchCard(name,list){const k=normKey(name);return list.find(a=>a.kind==="card"&&(k.includes(normKey(a.name))||(normKey(a.name).replace(/카드$/,"").length>=2&&k.includes(normKey(a.name).replace(/카드$/,"")))))}
+function billNote(r){const card=acctById(r.trIn?r.base:r.to);if(!card||card.kind!=="card")return"";const d=parseYmd(r.date);const c1=payDateOn(card,d.getFullYear(),d.getMonth()),c0=payDateOn(card,d.getFullYear(),d.getMonth()-1),c2=payDateOn(card,d.getFullYear(),d.getMonth()+1);const pd=[c0,c1,c2].sort((a,b)=>Math.abs(parseYmd(a)-d)-Math.abs(parseYmd(b)-d))[0];const b=billFor(card,pd,entries());if(!b.amt)return `${md(pd)} 결제분 · 예상 금액 없음`;const diff=r.amt-b.amt;return diff===0?`${md(pd)} 결제 예상 ${won(b.amt)}원과 일치`:`${md(pd)} 결제 예상 ${won(b.amt)}원 · 차이 ${diff>0?"+":"-"}${won(Math.abs(diff))}`}
+
 /* ================= categorising ================= */
 function guessCat(merchant,type){
   const k=normKey(merchant);if(k&&S.merchants[k])return S.merchants[k];
@@ -534,10 +551,12 @@ function buildQuickRows(){
   }
   for(const r of out){
     if(r.kind==="bad"||r.kind==="unknown")continue;
-    const ov=quickOv[r.key]||{};r.origType=r.type;
+    const ov=quickOv[r.key]||{};
+    if(!ov.type&&r.type==="out"&&((r.bankMsg&&/카드/.test(r.merchant||""))||/카드\s*(?:대금|값|결제\s*대금|청구)/.test(r.merchant||""))&&settings().accounts.some(a=>a.kind==="card")){r.type="tr";r.autoBill=true;r.review=false}
+    r.origType=r.autoBill?"out":r.type;
     if(ov.type){if(ov.type!==r.type){r.type=ov.type;if(r.type!=="out")r.inst=0;if(!ov.cat)r.cat=guessCat(r.merchant,r.type==="in"?"in":"out")}r.review=false}
     if(ov.cat)r.cat=ov.cat;r.catTouched=!!ov.cat;
-    if(r.type==="tr"){r.trIn=r.origType==="in";r.base=rowAcct(r).id;const others=settings().accounts.filter(a=>a.id!==r.base);const wantCard=!r.trIn&&/카드/.test(r.merchant||"");r.to=ov.to&&others.some(a=>a.id===ov.to)?ov.to:(others.find(a=>wantCard?a.kind==="card":a.kind!=="card")||others[0]||{}).id}
+    if(r.type==="tr"){r.trIn=r.origType==="in";r.base=rowAcct(r).id;const others=settings().accounts.filter(a=>a.id!==r.base);const wantCard=!r.trIn&&/카드/.test(r.merchant||"");r.to=ov.to&&others.some(a=>a.id===ov.to)?ov.to:(wantCard&&matchCard(r.merchant,others)||others.find(a=>wantCard?a.kind==="card":a.kind!=="card")||others[0]||{}).id}
     r.flow=guessFlow(r.merchant);r.dup=findDup(r);r.include=ov.include!==undefined?ov.include:!(r.dup&&r.dup.kind==="exact");
   }
   return out;
@@ -554,8 +573,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="1.5.1";
+const APP_VERSION="1.6";
 const CHANGELOG=[
+ {v:"1.6",d:"2026-10-27",items:["신용카드 결제일 관리를 추가했어요. 카드마다 결제일과 사용기간을 정하면 다음 결제 예정 금액을 자동으로 계산해요.","자산 탭에서 통장 잔액에서 다가오는 카드 결제를 뺀 '실제 여유 돈'을 보여줘요.","카드대금 출금 문자를 붙여넣으면 자동으로 통장 → 카드 이체로 잡고, 예상 결제 금액과 맞는지 알려줘요.","할부 첫 결제일도 카드 사용기간에 맞춰 계산해요."]},
  {v:"1.5.1",d:"2026-10-23",items:["아이폰 홈 화면에 추가할 때 새 저금통 아이콘이 나오도록 고쳤어요."]},
  {v:"1.5",d:"2026-10-23",items:["새 디자인으로 바꿨어요. 흰 바탕에 파란 포인트, 이번 달 지출을 크게 보여주는 깔끔한 화면이에요.","새 로고(저금통)와 홈 화면 아이콘을 적용했어요. 이미 추가한 아이콘은 지우고 다시 추가하면 새 아이콘으로 바뀌어요."]},
  {v:"1.4",d:"2026-10-23",items:["자산 탭의 한 달 예산을 고친 뒤 바로 탭을 바꾸거나 앱을 닫으면 저장되지 않던 문제를 고쳤어요. 이제 입력을 멈추면 바로 저장돼요."]},
@@ -650,11 +670,15 @@ function viewAcct(ents){
     if(e.type==="refund"&&b){b.v+=e.amt;if(ym(e.date)===cm)b.month-=e.amt}
     if(e.type==="tr"){if(b)b.v-=e.amt;if(bal[e.to])bal[e.to].v+=e.amt}}
   const net=s.accounts.reduce((a,x)=>a+(x.kind==="card"?0:bal[x.id].v),0);
+  const cards=s.accounts.filter(a=>a.kind==="card"),ci={};
+  cards.forEach(c=>{const pd=nextPayDate(c,now);const b=billFor(c,pd,ents);const paid=paidFor(c,pd,ents);const pd2=payDateOn(c,parseYmd(pd).getFullYear(),parseYmd(pd).getMonth()+1);const b2=billFor(c,pd2,ents);ci[c.id]={pd,...b,paid,due:Math.max(0,b.amt-paid),closed:now>b.end,pd2,b2}});
+  const upcoming=cards.reduce((a,c)=>a+ci[c.id].due,0);
   const instList=allTx().filter(t=>t.type==="out"&&t.inst&&t.inst.n>1);
   const kindName={bank:"통장",card:"카드",cash:"현금"};
-  return `<div class="total"><span class="muted">순자산 <span style="font-size:12px">(통장·현금)</span></span><span class="v num">${won(net)}원</span></div>
+  return `<div class="total col"><div class="r"><span class="muted">통장·현금 잔액</span><b class="num">${won(net)}원</b></div>${cards.length?`<div class="r"><span class="muted">다가오는 카드 결제</span><b class="num">${upcoming?"-":""}${won(upcoming)}원</b></div><div class="r big"><span>실제 여유 돈</span><b class="num">${won(net-upcoming)}원</b></div>`:""}</div>
+  ${cards.length?`<h2 class="sec"><span>카드 결제 일정</span></h2><div class="list">${cards.map(c=>{const x=ci[c.id];const st=x.paid>0&&x.paid>=x.amt&&x.amt>0?`<span class="pill acc">결제 완료</span>`:x.closed?`<span class="pill">금액 확정</span>`:`<span class="pill warn">사용 중</span>`;return `<button class="row" data-acct="${esc(c.id)}"><span class="cat">${md(x.pd)}</span><span class="main"><span class="t">${esc(c.name)}${st}</span><span class="s">${md(x.start)}~${md(x.end)} 사용 ${x.n}건${x.paid?` · ${won(x.paid)}원 결제됨`:""}</span></span><span class="amt num">${won(x.amt)}<small>다음 ${md(x.pd2)} · ${won(x.b2.amt)}</small></span></button>`}).join("")}</div><p class="note" style="margin-top:8px">카드로 쓴 돈은 쓴 날 지출로 잡히고, 결제일에 통장에서 나가는 카드대금은 <b>이체</b>로 기록하면 돼요. 카드대금 문자를 붙여넣으면 자동으로 이체로 잡혀요.</p>`:""}
   <h2 class="sec"><span>계좌·카드</span><button class="icon-btn" style="width:auto;padding:0 8px;height:24px;color:var(--accent);font-size:13px" data-acct-new="1">+ 추가</button></h2>
-  <div class="list">${s.accounts.map(a=>`<button class="row" data-acct="${esc(a.id)}"><span class="cat">${kindName[a.kind]||""}</span><span class="main"><span class="t">${esc(a.name)}</span><span class="s">${a.kind==="card"?`매달 ${a.payDay||14}일 결제 · 이번 달 ${won(bal[a.id].month)}원 사용`:"잔액"}</span></span><span class="amt num">${a.kind==="card"?"-"+won(bal[a.id].month):won(bal[a.id].v)}</span></button>`).join("")}</div>
+  <div class="list">${s.accounts.map(a=>`<button class="row" data-acct="${esc(a.id)}"><span class="cat">${kindName[a.kind]||""}</span><span class="main"><span class="t">${esc(a.name)}</span><span class="s">${a.kind==="card"?`매달 ${a.payDay||14}일 결제 · ${cycleText(a)}`:"잔액"}</span></span><span class="amt num">${a.kind==="card"?(ci[a.id].due?"-"+won(ci[a.id].due):"0"):won(bal[a.id].v)}${a.kind==="card"?`<small>${md(ci[a.id].pd)} 결제 예정</small>`:""}</span></button>`).join("")}</div>
   <h2 class="sec"><span>진행 중인 할부</span></h2>
   <div class="list">${instList.length?instList.map(t=>{const acct=acctById(t.acct);const paid=Array.from({length:t.inst.n},(_,i)=>addMonthsPay(t.inst.first,i,acct&&acct.payDay)).filter(d=>d<=now).length;return `<button class="row" data-edit="${esc(t.id)}"><span class="cat">${t.inst.n}개월</span><span class="main"><span class="t">${esc(t.merchant)}</span><span class="s">총 승인 ${won(t.amt)}원 · 첫 결제 ${fmtDate(t.inst.first)}</span></span><span class="amt num">${paid}/${t.inst.n}<small>월 ${won(Math.floor(t.amt/t.inst.n))}</small></span></button>`}).join(""):`<div class="empty">할부 내역이 없어요.</div>`}</div>
   <h2 class="sec"><span>설정</span></h2>
@@ -683,6 +707,10 @@ function viewGuide(){
   ${sec("카드·은행 문자 붙여넣기",`<ol><li>문자 앱에서 결제 문자를 길게 눌러 복사해요.</li><li>+ 버튼 → 빠른 입력 칸에 붙여넣어요. 여러 개는 빈 줄로 나눠요.</li><li>미리보기를 확인하고 저장해요.</li></ol>
     <h4>읽을 수 있는 문자</h4><ul><li><b>카드</b>: 신한·KB국민·현대·삼성·롯데·하나·우리·NH농협·BC·씨티·카카오뱅크·토스뱅크 등의 승인, 할부, 취소(환불)</li><li><b>은행</b>: KB국민·신한·NH농협·하나·우리·IBK기업·카카오뱅크·토스뱅크·케이뱅크 등의 출금·입금. 지출(수입)인지 내 계좌 간 이체인지 '확인 필요'로 표시돼요.</li><li>미리보기에서 금액·날짜·가맹점이 맞는지 꼭 확인하고 저장하세요. 틀리면 체크를 풀고 "가맹점 금액" 한 줄로 적어주세요.</li><li>신한 외 금융사는 문자 형식이 조금씩 달라서 가끔 가맹점을 못 찾을 수 있어요. 그럴 땐 저장 후 눌러서 고치면 돼요.</li><li>해외 결제는 원화 청구 금액이 나온 뒤 한 건씩 입력해요.</li></ul>`)}
   ${sec("한 건씩 기록하기",`<p>+ 버튼 → <b>한 건씩</b>에서 지출·수입·이체·환불을 골라요.</p><ul><li><b>할부</b>: 결제 수단을 카드로 고르면 할부 개월을 고를 수 있어요. 매달 카드 결제일에 나눠서 지출로 잡혀요.</li><li><b>환불</b>: '원래 결제'를 고르면 그 결제의 분류에서 빠져요. 원래 금액보다 많이 환불할 수는 없어요.</li><li><b>이체</b>: 통장끼리 옮긴 돈은 지출로 세지 않아요.</li><li>기록을 누르면 수정하거나 삭제할 수 있어요.</li></ul>`)}
+  ${sec("신용카드와 카드대금",`<p>카드로 쓴 돈은 <b>쓴 날 지출</b>로 적고, 결제일에 통장에서 나가는 <b>카드대금은 이체</b>로 적어요. 그래야 지출이 두 번 잡히지 않고, 무엇에 얼마 썼는지도 남아요.</p>
+    <table class="gtable"><tr><td>10/27 편의점 1,000원</td><td>지출 (카드)</td></tr><tr><td>10/28 약국 8,000원</td><td>지출 (카드)</td></tr><tr><td>11/14 카드대금 9,000원</td><td>이체 (통장 → 카드)</td></tr></table>
+    <h4>설정</h4><ol><li><b>자산</b> 탭에서 카드를 눌러 <b>결제일</b>과 <b>사용기간 시작</b>을 맞춰요. 카드사 명세서의 '이용기간'을 보면 돼요.</li><li>자산 탭 <b>카드 결제 일정</b>에서 다음 결제 예정 금액을 확인해요.</li><li>맨 위 <b>실제 여유 돈</b>은 통장 잔액에서 곧 나갈 카드값을 뺀 금액이에요.</li></ol>
+    <h4>결제일에는</h4><p>통장의 카드대금 출금 문자를 빠른 입력에 붙여넣으면 자동으로 이체로 잡히고, 예상 금액과 맞는지 알려줘요. 결제가 끝나면 카드 결제 일정에 '결제 완료'로 표시돼요.</p>`)}
   ${sec("월말 정리",`<ol><li>요약 카드의 <b>정리하기</b>를 눌러요.</li><li>미분류 거래마다 <b>생활비·고정비·비정기</b>를 골라요.<ul><li><b>생활비</b>: 식비, 쇼핑처럼 평소 쓰는 돈</li><li><b>고정비</b>: 관리비, 통신비, 구독처럼 매달 나가는 돈</li><li><b>비정기</b>: 가전, 여행처럼 가끔 크게 쓰는 돈</li></ul></li><li>'확인 필요' 표시는 눌러서 내용을 확인하고 저장해요.</li><li>모두 정리되면 <b>통계</b> 탭에서 <b>장부 확정하기</b>를 눌러요.</li></ol><p class="muted" style="margin-top:8px">한 번 고른 지출 성격은 같은 가맹점에 다음부터 자동으로 들어가요.</p>`)}
   ${sec("백업과 기기 변경",`<p>장부는 <b>이 휴대폰에만</b> 저장돼요. 휴대폰을 바꾸거나 브라우저 데이터를 지우면 사라지니 2주에 한 번쯤 백업해 두세요.</p><ol><li><b>자산</b> 탭 → <b>백업 파일 저장</b></li><li>파일 앱에 저장하거나 카카오톡 '나와의 채팅'으로 보내요.</li><li>새 기기에서는 <b>백업 파일 불러오기</b>로 그 파일을 열면 이어서 쓸 수 있어요. 지금 장부는 백업 내용으로 바뀌어요.</li></ol>`)}
   ${sec("자주 묻는 질문",`<table class="gtable"><tr><td>적어둔 내역이 안 보여요</td><td>Safari와 홈 화면 아이콘처럼 다른 곳으로 열었는지 확인하세요. 기록했던 곳에서 열면 그대로 있어요.</td></tr><tr><td>노트북에서도 보고 싶어요</td><td>백업 파일을 만들어 노트북에서 불러오세요. 자동으로 맞춰지지는 않아요.</td></tr><tr><td>새 기능이 안 보여요</td><td>앱을 완전히 닫았다가 인터넷이 연결된 상태에서 다시 열어주세요.</td></tr><tr><td>내 기록을 누가 볼 수 있나요?</td><td>아무도 못 봐요. 어디로도 전송되지 않고 이 휴대폰에만 있어요.</td></tr></table>`)}`;
@@ -724,7 +752,8 @@ function quickPrev(){
     const dup=r.dup?`<span class="pill warn">${r.dup.kind==="exact"?"이미 저장됨":"비슷한 거래 있음"}</span>`:"";
     const tags=(r.inst?`<span class="pill acc">${r.inst}개월</span>`:"")+(r.type==="refund"?`<span class="pill acc">환불</span>`:"")+(r.review?`<span class="pill warn">확인 필요</span>`:"")+src+dup;
     const trTxt=r.type==="tr"?((acctById(r.trIn?r.to:r.base)||{}).name||"?")+" → "+((acctById(r.trIn?r.base:r.to)||{}).name||"?"):"";
-    const sub=[fmtDate(r.date),r.time||"",trTxt?esc(trTxt):"",r.flow&&r.type!=="tr"&&r.type!=="in"?flowShort(r.flow):"",r.dup?`${esc(r.dup.t.merchant||"이체")} ${won(r.dup.t.amt)}원과 같은 날·같은 금액`:""].filter(Boolean).join(" · ");
+    const bn=r.type==="tr"?billNote(r):"";
+    const sub=[fmtDate(r.date),r.time||"",trTxt?esc(trTxt):"",bn?(r.autoBill?"카드대금 · ":"")+esc(bn):"",r.flow&&r.type!=="tr"&&r.type!=="in"?flowShort(r.flow):"",r.dup?`${esc(r.dup.t.merchant||"이체")} ${won(r.dup.t.amt)}원과 같은 날·같은 금액`:""].filter(Boolean).join(" · ");
     return `<div class="row ${r.include?"":"off"}"><input type="checkbox" data-qinc="${i}" ${r.include?"checked":""} aria-label="저장에 포함"><span class="main"><span class="t">${esc(r.merchant)}${tags}</span><span class="s wrap">${sub}</span></span><span class="right"><span class="amt num ${r.type==="in"?"in":r.type==="refund"?"ref":r.type==="tr"?"muted":""}">${r.type==="out"?"-":r.type==="tr"?"":"+"}${won(r.amt)}</span><select data-qtype="${i}" aria-label="거래 종류">${[["out","지출"],["in","수입"],["tr","이체"],["refund","환불"]].map(([k,l])=>`<option value="${k}" ${r.type===k?"selected":""}>${l}</option>`).join("")}</select>${r.type==="tr"?`<select data-qto="${i}" aria-label="${r.trIn?"보낸 곳":"받는 곳"}">${acctOptions(r.to,a=>a.id!==r.base)}</select>`:`<select data-qcat="${i}" aria-label="카테고리">${catOptions(r.type==="in"?"in":"out",r.cat)}</select>`}</span></div>`;
   }).join("");
   return `<div class="list prev" style="margin-bottom:12px">${rows}</div>
@@ -891,13 +920,16 @@ async function exportPamo(){
   catch(e){if(e&&e.code==="declined")return;toast(e&&e.code==="rate_limited"?"잠시 후 다시 시도하세요.":"파일을 저장하지 못했어요.")}
 }
 function openAcct(id){
-  const s=settings();const a=id?s.accounts.find(x=>x.id===id):{id:uid(),name:"",kind:"bank",init:0,payDay:14};
+  const s=settings();const a=id?s.accounts.find(x=>x.id===id):{id:uid(),name:"",kind:"bank",init:0,payDay:14,cycMon:-1,cycDay:1};
   const used=id&&[...S.tx.values()].some(t=>t.acct===id||t.to===id);
   openSheet(`<header><h3>${id?"계좌 수정":"계좌 추가"}</h3><button class="icon-btn" data-close="1" aria-label="닫기">✕</button></header>
   <div class="field"><label for="a-name">이름</label><input class="inp" id="a-name" value="${esc(a.name)}" placeholder="예: 생활비 통장" autofocus></div>
   <div class="two"><div class="field"><label for="a-kind">종류</label><select class="inp" id="a-kind">${[["bank","통장"],["card","카드"],["cash","현금"]].map(([k,l])=>`<option value="${k}" ${a.kind===k?"selected":""}>${l}</option>`).join("")}</select></div>
   <div class="field"><label for="a-init">시작 잔액</label><input class="inp num" id="a-init" inputmode="numeric" value="${a.init?won(a.init):""}" placeholder="0"></div></div>
-  <div class="field"><label for="a-pay">카드 결제일 (카드만)</label><input class="inp" id="a-pay" type="number" min="1" max="31" value="${a.payDay||14}"></div>
+  <h4 style="margin:4px 2px 8px;font-size:13px;color:var(--muted)">신용카드만 입력</h4>
+  <div class="two"><div class="field"><label for="a-pay">결제일</label><input class="inp" id="a-pay" type="number" min="1" max="31" value="${a.payDay||14}"></div>
+  <div class="field"><label for="a-cycmon">사용기간 시작</label><div style="display:flex;gap:6px"><select class="inp" id="a-cycmon" style="flex:1"><option value="-1" ${(a.cycMon??-1)===-1?"selected":""}>전월</option><option value="-2" ${(a.cycMon??-1)===-2?"selected":""}>전전월</option></select><input class="inp" id="a-cycday" type="number" min="1" max="31" value="${a.cycDay||1}" style="width:64px" aria-label="사용기간 시작일"></div></div></div>
+  <p class="note">결제일에 나가는 금액이 어느 기간에 쓴 돈인지예요. 카드사 앱이나 명세서의 '이용기간'을 보고 맞춰주세요. 예: 14일 결제 → 전월 1일부터 한 달.${a.kind==="card"?` 지금 설정이면 다음 결제 ${md(nextPayDate(a,todayStr()))}에는 ${md(cardCycle(a,nextPayDate(a,todayStr())).start)}~${md(cardCycle(a,nextPayDate(a,todayStr())).end)} 사용분이 나가요.`:""}</p>
   <button class="btn" data-asave="${esc(a.id)}">저장</button>
   ${id?`<div class="btn-row"><button class="btn danger" data-adel="${esc(a.id)}" ${used?"disabled":""}>${used?"사용 중인 계좌는 삭제할 수 없어요":"삭제"}</button></div>`:""}`);
 }
@@ -971,7 +1003,7 @@ document.addEventListener("click",e=>{
   else if(ds.edit){if(isDemo()){toast("예시 거래예요. + 버튼으로 첫 거래를 기록해 보세요.");return}const x=S.tx.get(ds.edit);if(!x)return;draft={...x,merchant:x.merchant||"",cat:x.cat||"",flow:normFlow(x.flow),memo:x.memo||"",to:x.to||"",cancelOf:x.cancelOf||"",instN:x.inst?x.inst.n:0,instFirst:x.inst?x.inst.first:"",catTouched:false,flowTouched:false};addMode="one";renderAdd()}
   else if(ds.acct)openAcct(ds.acct);
   else if(ds.acctNew)openAcct(null);
-  else if(ds.asave){const s=JSON.parse(JSON.stringify(settings()));const name=$("#a-name").value.trim();if(!name){toast("이름을 입력해 주세요.");return}const a={id:ds.asave,name,kind:$("#a-kind").value,init:parseInt($("#a-init").value.replace(/[^\d-]/g,""),10)||0};if(a.kind==="card")a.payDay=Math.min(31,Math.max(1,+$("#a-pay").value||14));const i=s.accounts.findIndex(x=>x.id===a.id);if(i>=0)s.accounts[i]=a;else s.accounts.push(a);putSettings(s);closeSheet();toast("저장했어요.")}
+  else if(ds.asave){const s=JSON.parse(JSON.stringify(settings()));const name=$("#a-name").value.trim();if(!name){toast("이름을 입력해 주세요.");return}const a={id:ds.asave,name,kind:$("#a-kind").value,init:parseInt($("#a-init").value.replace(/[^\d-]/g,""),10)||0};if(a.kind==="card"){a.payDay=Math.min(31,Math.max(1,+$("#a-pay").value||14));a.cycMon=+$("#a-cycmon").value===-2?-2:-1;a.cycDay=Math.min(31,Math.max(1,+$("#a-cycday").value||1))}const i=s.accounts.findIndex(x=>x.id===a.id);if(i>=0)s.accounts[i]=a;else s.accounts.push(a);putSettings(s);closeSheet();toast("저장했어요.")}
   else if(ds.adel){const s=JSON.parse(JSON.stringify(settings()));s.accounts=s.accounts.filter(x=>x.id!==ds.adel);putSettings(s);closeSheet();toast("삭제했어요.")}
 });
 document.addEventListener("input",e=>{
