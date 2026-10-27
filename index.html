@@ -443,12 +443,14 @@ function allTx(){return isDemo()?demoTx():[...S.tx.values()]}
 function txById(id){if(!id)return null;return isDemo()?demoTx().find(t=>t.id===id)||null:S.tx.get(id)||null}
 
 /* ================= ledger math ================= */
+/* 카드사 할부: 회차 금액은 100원 단위로 내리고, 남는 돈은 첫 회차에 붙여요 */
+const instBase=(amt,n)=>{const b=Math.floor(amt/n/100)*100;return b>0?b:Math.floor(amt/n)};
 function entries(){
   const out=[];
   for(const t of allTx()){
     if(t.type==="out"&&t.inst&&t.inst.n>1){
-      const n=t.inst.n,base=Math.floor(t.amt/n),acct=acctById(t.acct);
-      for(let i=0;i<n;i++){const amt=i===n-1?t.amt-base*(n-1):base;out.push({...t,date:addMonthsPay(t.inst.first,i,acct&&acct.payDay),amt,instIdx:i+1,src:t})}
+      const n=t.inst.n,base=instBase(t.amt,n),acct=acctById(t.acct);
+      for(let i=0;i<n;i++){const amt=i===0?t.amt-base*(n-1):base;out.push({...t,date:addMonthsPay(t.inst.first,i,acct&&acct.payDay),amt,instIdx:i+1,src:t})}
     }else out.push({...t,src:t});
   }
   return out.sort((a,b)=>b.date.localeCompare(a.date)||(b.time||"").localeCompare(a.time||"")||(b.at||0)-(a.at||0));
@@ -701,8 +703,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="2.1";
+const APP_VERSION="2.2";
 const CHANGELOG=[
+ {v:"2.2",d:"2026-10-27",items:["할부 회차 금액을 카드사와 같게 계산해요. 매달 100원 단위로 나가고, 남는 돈은 첫 회차에 붙어요."]},
  {v:"2.1",d:"2026-10-27",items:["카드사 '할부 현황' 파일도 불러올 수 있어요. 이용내역 파일에 안 나오는 예전 할부를 지금 회차에 맞춰 넣어요."]},
  {v:"2.0",d:"2026-10-27",items:["카드사·은행에서 받은 이용내역 파일(엑셀·CSV)을 불러와 한 번에 기록할 수 있어요. + → 빠른 입력·문자 → '이용내역 파일 불러오기'.","이미 기록된 거래는 자동으로 빼고, 취소된 결제는 넣지 않아요. 할부는 결제일마다 나눠서 잡혀요.","파일은 휴대폰 안에서만 읽고 어디로도 보내지 않아요."]},
  {v:"1.9",d:"2026-10-27",items:["선결제 금액을 고칠 수 있어요. 일부만 미리 냈다면 낸 금액만 결제 예정에서 빠져요.","할부를 선결제로 체크하면 그 회차만 빠지고, 다음 회차는 원래대로 다음 결제일에 나가요."]},
@@ -813,7 +816,7 @@ function viewAcct(ents){
   <h2 class="sec"><span>계좌·카드</span><button class="icon-btn" style="width:auto;padding:0 8px;height:24px;color:var(--accent);font-size:13px" data-acct-new="1">+ 추가</button></h2>
   <div class="list">${s.accounts.map(a=>`<button class="row" data-acct="${esc(a.id)}"><span class="cat">${kindName[a.kind]||""}</span><span class="main"><span class="t">${esc(a.name)}</span><span class="s">${a.kind==="card"?`매달 ${a.payDay||14}일 결제 · ${cycleText(a)}`:"잔액"}</span></span><span class="amt num">${a.kind==="card"?(ci[a.id].due?"-"+won(ci[a.id].due):"0"):won(bal[a.id].v)}${a.kind==="card"?`<small>${md(ci[a.id].pd)} 결제 예정</small>`:""}</span></button>`).join("")}</div>
   <h2 class="sec"><span>진행 중인 할부</span></h2>
-  <div class="list">${instList.length?instList.map(t=>{const acct=acctById(t.acct);const paid=Array.from({length:t.inst.n},(_,i)=>addMonthsPay(t.inst.first,i,acct&&acct.payDay)).filter(d=>d<=now).length;return `<button class="row" data-edit="${esc(t.id)}"><span class="cat">${t.inst.n}개월</span><span class="main"><span class="t">${esc(t.merchant)}</span><span class="s">총 승인 ${won(t.amt)}원 · 첫 결제 ${fmtDate(t.inst.first)}</span></span><span class="amt num">${paid}/${t.inst.n}<small>월 ${won(Math.floor(t.amt/t.inst.n))}</small></span></button>`}).join(""):`<div class="empty">할부 내역이 없어요.</div>`}</div>
+  <div class="list">${instList.length?instList.map(t=>{const acct=acctById(t.acct);const paid=Array.from({length:t.inst.n},(_,i)=>addMonthsPay(t.inst.first,i,acct&&acct.payDay)).filter(d=>d<=now).length;return `<button class="row" data-edit="${esc(t.id)}"><span class="cat">${t.inst.n}개월</span><span class="main"><span class="t">${esc(t.merchant)}</span><span class="s">총 승인 ${won(t.amt)}원 · 첫 결제 ${fmtDate(t.inst.first)}</span></span><span class="amt num">${paid}/${t.inst.n}<small>월 ${won(instBase(t.amt,t.inst.n))}</small></span></button>`}).join(""):`<div class="empty">할부 내역이 없어요.</div>`}</div>
   <h2 class="sec"><span>설정</span></h2>
   <div class="card-sec"><div class="field"><label for="budget">한 달 예산</label><input class="inp num" id="budget" inputmode="numeric" value="${s.budget?won(s.budget):""}" placeholder="예: 1,500,000"></div>
   <p class="muted" style="font-size:13px">예산은 '예산에 포함'된 지출만으로 계산해요. 관리비·통신비처럼 예산 밖에 둘 지출은 기록을 눌러 '예산에 포함'을 끄면 되고, 같은 가맹점은 다음부터 자동으로 빠져요.</p>
