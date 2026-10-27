@@ -579,7 +579,7 @@ function xlCols(row){
   c.inst=find(/할부(개월|기간)?$|할부개월/);c.use=find(/^(이용구분|결제구분|결제방법|이용방법)$/);
   c.ap=find(/승인번호/);c.cancel=find(/^(취소여부|취소상태|취소구분|승인구분|매입구분|상태|정상취소구분|거래상태)$/);
   c.card=find(/이용카드|카드명|카드종류|카드번호/);c.who=find(/받는분|보낸분|거래상대|의뢰인|입금자|상대계좌예금주/);c.kind=find(/^(입출금구분|거래구분|입지구분|구분)$/);
-  c.instStatus=find(/^회차$|잔여원금|잔여회차/);
+  c.round=find(/^(회차|할부회차|납입회차|결제회차|청구회차)$/);c.remain=find(/잔여원금|잔여금액|남은원금/);
   const hasAmt=c.amt>=0||(c.out>=0||c.in>=0);
   return c.date>=0&&hasAmt?c:null;
 }
@@ -589,14 +589,18 @@ function xlParseSheets(sheets,fname,today){
   for(const {name,rows} of sheets){
     let hi=-1,c=null;for(let i=0;i<Math.min(rows.length,40);i++){const cc=xlCols(rows[i]);if(cc){hi=i;c=cc;break}}
     if(!c){if(!res.hint)res.hint=xlIssuer(rows.slice(0,6).flat().join(" "));continue}
-    if(c.instStatus>=0&&c.ap<0){res.instStatus=true;continue}
+    const isStatus=c.round>=0&&c.ap<0;if(isStatus)res.instStatus=true;
     const head=rows.slice(0,hi).flat().join(" ");if(!res.hint)res.hint=xlIssuer(head+" "+name);
-    const isBank=(c.out>=0||c.in>=0)&&c.ap<0&&c.inst<0;if(isBank)res.bank=true;
+    const isBank=!isStatus&&(c.out>=0||c.in>=0)&&c.ap<0&&c.inst<0;if(isBank)res.bank=true;
     for(const r of rows.slice(hi+1)){
       const cell=i=>i>=0&&i<r.length?String(r[i]==null?"":r[i]).trim():"";
       if(r.every(v=>String(v==null?"":v).trim()===""))continue;
       if(/합계|소계|총계|^계$|^총\s*[\d,]+\s*건/.test(cell(c.date)+cell(c.merch))||r.some(v=>/^총\s*[\d,]+\s*건$/.test(String(v).trim())))continue;
       const dt=xlDate(cell(c.date),today);if(!dt){res.skipped++;continue}
+      if(dt.time==="00:00")dt.time="";
+      if(isStatus){const rv=cell(c.round);let mm=rv.match(/^\d{4}-(\d{2})-(\d{2})/)||rv.match(/^(\d{1,3})\s*\/\s*(\d{1,3})/)||rv.match(/(\d{1,3})\s*회?\s*\/\s*(\d{1,3})/);const k=mm?+mm[1]:0,n=mm?+mm[2]:0;const amt=xlNum(cell(c.amt));
+        if(!k||!n||k>n||n<2||isNaN(amt)||amt<=0){res.skipped++;continue}
+        res.items.push({date:dt.date,time:"",merchant:(cell(c.merch)||"(이름 없음)").replace(/\s+/g," ").slice(0,60),amt,type:"out",inst:n,instK:k,ap:"",bank:false});continue}
       if(!dt.time&&c.time>=0){const tm=cell(c.time).match(/(\d{1,2}):(\d{2})/);if(tm)dt.time=`${tm[1].padStart(2,"0")}:${tm[2]}`}
       if(!res.hint&&c.card>=0)res.hint=xlIssuer(cell(c.card));
       const cv=c.cancel>=0?cell(c.cancel):"";
@@ -618,7 +622,6 @@ function xlParseSheets(sheets,fname,today){
   }
   return res;
 }
-
 const XLSX_SRC="./xlsx.full.min.js";let xlsxP=null;
 function loadXLSX(){if(window.XLSX)return Promise.resolve();if(!xlsxP)xlsxP=new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=XLSX_SRC;sc.onload=()=>res();sc.onerror=()=>{xlsxP=null;rej(new Error("load"))};document.head.appendChild(sc)});return xlsxP}
 let quickFiles=[];
@@ -634,11 +637,11 @@ async function readXlFiles(list){
       else wb=XLSX.read(new Uint8Array(buf),{type:"array"});
       const sheets=wb.SheetNames.map(n=>({name:n,rows:XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:"",dateNF:"yyyy-mm-dd hh:mm"})}));
       const r=xlParseSheets(sheets,file.name,today);
-      if(!r.items.length){msgs.push(`${esc(file.name)}: ${r.instStatus?"할부 현황 파일이에요. 카드사에서 '이용내역(승인내역)' 파일을 받아 주세요.":"거래 내역을 찾지 못했어요. 이용내역·거래내역 파일인지 확인해 주세요."}`);continue}
+      if(!r.items.length){msgs.push(`${esc(file.name)}: 거래 내역을 찾지 못했어요. 이용내역·거래내역·할부 현황 파일인지 확인해 주세요.`);continue}
       const accts=settings().accounts,pool=accts.filter(a=>r.bank?a.kind!=="card":a.kind==="card");
       const hit=r.hint?pool.find(a=>a.name.includes(r.hint)):null;const qa=acctById(quickAcct);
       const acct=hit||(!r.bank&&qa&&qa.kind==="card"?qa:null)||pool[0]||accts[0]||{};
-      quickFiles.push({id:uid(),name:file.name,items:r.items,acct:acct.id,hint:r.hint,hit:!!hit,bank:r.bank,cancelled:r.cancelled,skipped:r.skipped});added+=r.items.length;
+      quickFiles.push({id:uid(),name:file.name,items:r.items,acct:acct.id,hint:r.hint,hit:!!hit,bank:r.bank,instFile:r.instStatus,cancelled:r.cancelled,skipped:r.skipped});added+=r.items.length;
     }catch(e){msgs.push(`${esc(file.name)}: ${/password|encrypt|ECMA-376|CFB/i.test(String(e&&e.message))?"비밀번호가 걸린 파일이라 열 수 없어요. 비밀번호 없이 다시 받아 주세요.":"파일을 열지 못했어요. 엑셀(xls, xlsx)이나 CSV 파일인지 확인해 주세요."}`)}
   }
   say(msgs.join("<br>"));refreshQuick();if(added)toast(`${added}건을 읽었어요. 결제 수단과 중복을 확인하고 저장하세요.`);
@@ -646,7 +649,7 @@ async function readXlFiles(list){
 function xlFilesHtml(){
   if(!quickFiles.length)return "";
   return `<div class="list" style="margin-bottom:12px">${quickFiles.map(f=>{const a=acctById(f.acct);const miss=f.hint&&!f.hit?` · ${esc(f.hint)}${f.bank?"":"카드"} 계좌가 없어요. 자산 탭에서 추가하면 ${f.bank?"계좌별 잔액을":"결제일을 따로"} 관리할 수 있어요`:"";
-    return `<div class="row"><span class="cat">파일</span><span class="main"><span class="t">${esc(f.name)}</span><span class="s wrap" style="white-space:normal;overflow:visible">${f.items.length}건 읽음${f.cancelled?` · 취소된 결제 ${f.cancelled}건 뺌`:""}${f.skipped?` · 못 읽은 줄 ${f.skipped}건`:""}${miss}</span></span><span class="right"><select data-xlacct="${esc(f.id)}" aria-label="이 파일의 결제 수단">${acctOptions(f.acct)}</select><button type="button" class="icon-btn" data-xlrm="${esc(f.id)}" aria-label="이 파일 빼기">✕</button></span></div>`}).join("")}</div>`;
+    return `<div class="row"><span class="cat">파일</span><span class="main"><span class="t">${esc(f.name)}</span><span class="s wrap" style="white-space:normal;overflow:visible">${f.instFile?"할부 현황 · ":""}${f.items.length}건 읽음${f.instFile?" · 지금 회차가 다음 결제일에 나가도록 맞췄어요":""}${f.cancelled?` · 취소된 결제 ${f.cancelled}건 뺌`:""}${f.skipped?` · 못 읽은 줄 ${f.skipped}건`:""}${miss}</span></span><span class="right"><select data-xlacct="${esc(f.id)}" aria-label="이 파일의 결제 수단">${acctOptions(f.acct)}</select><button type="button" class="icon-btn" data-xlrm="${esc(f.id)}" aria-label="이 파일 빼기">✕</button></span></div>`}).join("")}</div>`;
 }
 let quickText="",quickRows=[],quickAcct="",quickOv={},quickAI={},aiBusy=false;
 function findDup(r){
@@ -673,7 +676,7 @@ function buildQuickRows(){
       out.push({kind:"bad",raw:b.text.split("\n").find(l=>!SMS_TAG.test(l))||b.text,msg:"거래 문자로 보이지 않아요.",key:"b"+b.text});
     }else{const q=parseLine(b.text,base,today);if(q)out.push({...q,key:"q"+b.text})}
   }
-  for(const f of quickFiles){const fa=acctById(f.acct);f.items.forEach((x,j)=>out.push({kind:"xl",raw:"",type:x.type,date:x.date,time:x.time,merchant:x.merchant,amt:x.amt,cat:guessCat(x.merchant,x.type==="in"?"in":"out"),inst:x.inst,src:"excel",issuer:"파일",acctId:f.acct,bankMsg:!!(fa&&fa.kind!=="card"),hash:x.ap?"ap:"+f.acct+":"+x.ap:"",key:"x"+f.id+":"+j}))}
+  for(const f of quickFiles){const fa=acctById(f.acct);f.items.forEach((x,j)=>out.push({kind:"xl",raw:"",type:x.type,date:x.date,time:x.time,merchant:x.merchant,amt:x.amt,cat:guessCat(x.merchant,x.type==="in"?"in":"out"),inst:x.inst,instK:x.instK||0,instFirst:x.instK&&fa&&fa.kind==="card"?(()=>{const np=parseYmd(nextPayDate(fa,todayStr()));return payDateOn(fa,np.getFullYear(),np.getMonth()-(x.instK-1))})():"",src:"excel",issuer:"파일",acctId:f.acct,bankMsg:!!(fa&&fa.kind!=="card"),hash:x.ap?"ap:"+f.acct+":"+x.ap:"",key:"x"+f.id+":"+j}))}
   for(const r of out){
     if(r.kind==="bad"||r.kind==="unknown")continue;
     const ov=quickOv[r.key]||{};
@@ -698,8 +701,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="2.0";
+const APP_VERSION="2.1";
 const CHANGELOG=[
+ {v:"2.1",d:"2026-10-27",items:["카드사 '할부 현황' 파일도 불러올 수 있어요. 이용내역 파일에 안 나오는 예전 할부를 지금 회차에 맞춰 넣어요."]},
  {v:"2.0",d:"2026-10-27",items:["카드사·은행에서 받은 이용내역 파일(엑셀·CSV)을 불러와 한 번에 기록할 수 있어요. + → 빠른 입력·문자 → '이용내역 파일 불러오기'.","이미 기록된 거래는 자동으로 빼고, 취소된 결제는 넣지 않아요. 할부는 결제일마다 나눠서 잡혀요.","파일은 휴대폰 안에서만 읽고 어디로도 보내지 않아요."]},
  {v:"1.9",d:"2026-10-27",items:["선결제 금액을 고칠 수 있어요. 일부만 미리 냈다면 낸 금액만 결제 예정에서 빠져요.","할부를 선결제로 체크하면 그 회차만 빠지고, 다음 회차는 원래대로 다음 결제일에 나가요."]},
  {v:"1.8",d:"2026-10-27",items:["카드 결제 일정에서 카드를 누르면 이번 결제에 들어가는 내역이 열려요.","미리 선결제한 항목을 체크하면 결제 예정에서 빠지고, 고른 통장에서 미리 나간 것으로 계산돼요."]},
@@ -838,8 +842,8 @@ function viewGuide(){
     <h4>읽을 수 있는 문자</h4><ul><li><b>카드</b>: 신한·KB국민·현대·삼성·롯데·하나·우리·NH농협·BC·씨티·카카오뱅크·토스뱅크 등의 승인, 할부, 취소(환불)</li><li><b>은행</b>: KB국민·신한·NH농협·하나·우리·IBK기업·카카오뱅크·토스뱅크·케이뱅크 등의 출금·입금. 지출(수입)인지 내 계좌 간 이체인지 '확인 필요'로 표시돼요.</li><li>미리보기에서 금액·날짜·가맹점이 맞는지 꼭 확인하고 저장하세요. 틀리면 체크를 풀고 "가맹점 금액" 한 줄로 적어주세요.</li><li>신한 외 금융사는 문자 형식이 조금씩 달라서 가끔 가맹점을 못 찾을 수 있어요. 그럴 땐 저장 후 눌러서 고치면 돼요.</li><li>해외 결제는 원화 청구 금액이 나온 뒤 한 건씩 입력해요.</li></ul>`)}
   ${sec("이용내역 파일로 한 번에 기록하기",`<p>카드사·은행 앱이나 홈페이지에서 받은 <b>이용내역 파일(엑셀 xls·xlsx, CSV)</b>을 불러오면 한 달치를 한 번에 넣을 수 있어요. 파일은 휴대폰 안에서만 읽고 어디로도 보내지 않아요.</p>
     <ol><li>카드사 앱·홈페이지에서 <b>이용내역(승인내역)</b>을 조회하고 <b>엑셀 다운로드</b>를 눌러요. 은행은 <b>거래내역 조회 → 엑셀 저장</b>이에요. 앱에서 안 되면 PC 홈페이지에서 받아 휴대폰으로 보내요.</li><li>+ 버튼 → <b>빠른 입력·문자</b> → <b>카드·은행 이용내역 파일 불러오기</b>를 누르고 파일을 골라요. 여러 개를 한 번에 골라도 돼요.</li><li>파일 옆의 <b>결제 수단</b>이 맞는지 확인해요. 파일 이름이나 내용에 카드사가 있으면 같은 이름의 카드를 자동으로 골라요.</li><li>미리보기에서 카테고리·예산 포함을 확인하고 저장해요.</li></ol>
-    <h4>자동으로 처리되는 것</h4><ul><li><b>이미 기록된 거래</b>(같은 카드, 같은 금액, 하루 안쪽)는 빼 둬요. 그래도 넣으려면 체크하세요.</li><li><b>취소된 결제</b>와 합계 줄은 넣지 않아요.</li><li><b>할부</b>는 할부 개월을 읽어서 결제일마다 나눠 잡혀요.</li><li>은행 내역의 <b>카드대금 출금</b>은 이체로 잡혀요.</li></ul>
-    <h4>안 될 때</h4><ul><li>비밀번호가 걸린 파일은 열 수 없어요. 비밀번호 없이 다시 받아 주세요.</li><li>'할부 현황'이나 '명세서 요약'처럼 거래별 줄이 없는 파일은 읽지 못해요. 이용내역 파일을 받아 주세요.</li><li>처음 한 번은 파일 읽기 도구를 받느라 인터넷이 필요해요.</li></ul>`)}
+    <h4>자동으로 처리되는 것</h4><ul><li><b>이미 기록된 거래</b>(같은 카드, 같은 금액, 하루 안쪽)는 빼 둬요. 그래도 넣으려면 체크하세요.</li><li><b>취소된 결제</b>와 합계 줄은 넣지 않아요.</li><li><b>할부</b>는 할부 개월을 읽어서 결제일마다 나눠 잡혀요.</li><li>이용내역 파일에는 <b>조회 기간 전에 산 할부</b>가 안 나와요. 카드사의 <b>할부 현황(할부 이용내역)</b> 파일을 따로 받아 불러오면, 지금 회차가 다음 결제일에 나가도록 맞춰서 넣어요.</li><li>은행 내역의 <b>카드대금 출금</b>은 이체로 잡혀요.</li></ul>
+    <h4>안 될 때</h4><ul><li>비밀번호가 걸린 파일은 열 수 없어요. 비밀번호 없이 다시 받아 주세요.</li><li>'명세서 요약'처럼 거래별 줄이 없는 파일은 읽지 못해요. 이용내역 파일을 받아 주세요.</li><li>처음 한 번은 파일 읽기 도구를 받느라 인터넷이 필요해요.</li></ul>`)}
   ${sec("한 건씩 기록하기",`<p>+ 버튼 → <b>한 건씩</b>에서 지출·수입·이체·환불을 골라요.</p><ul><li><b>할부</b>: 결제 수단을 카드로 고르면 할부 개월을 고를 수 있어요. 매달 카드 결제일에 나눠서 지출로 잡혀요.</li><li><b>환불</b>: '원래 결제'를 고르면 그 결제의 분류에서 빠져요. 원래 금액보다 많이 환불할 수는 없어요.</li><li><b>이체</b>: 통장끼리 옮긴 돈은 지출로 세지 않아요.</li><li>기록을 누르면 수정하거나 삭제할 수 있어요.</li></ul>`)}
   ${sec("신용카드와 카드대금",`<p>카드로 쓴 돈은 <b>쓴 날 지출</b>로 적고, 결제일에 통장에서 나가는 <b>카드대금은 이체</b>로 적어요. 그래야 지출이 두 번 잡히지 않고, 무엇에 얼마 썼는지도 남아요.</p>
     <table class="gtable"><tr><td>10/27 편의점 1,000원</td><td>지출 (카드)</td></tr><tr><td>10/28 약국 8,000원</td><td>지출 (카드)</td></tr><tr><td>11/14 카드대금 9,000원</td><td>이체 (통장 → 카드)</td></tr></table>
@@ -886,7 +890,7 @@ function quickPrev(){
     if(r.kind==="unknown")return `<div class="row"><span class="cat">문자</span><span class="main"><span class="t">${esc(normalizeSms(r.raw).slice(0,40))}</span><span class="s wrap">${S.sample?"아직 읽지 않은 문자예요. 아래 버튼으로 Claude가 읽어요.":"이 형식은 아직 읽을 수 없어요. 한 줄 입력으로 적어주세요."}</span></span></div>`;
     const src=r.src==="excel"?`<span class="pill">파일</span>`:r.src==="sms"?`<span class="pill">${esc(r.issuer)}</span>`:r.src==="ai-sms"?`<span class="pill">Claude 읽음</span>`:"";
     const dup=r.dup?`<span class="pill warn">${r.dup.kind==="exact"?"이미 저장됨":"비슷한 거래 있음"}</span>`:"";
-    const tags=(r.inst?`<span class="pill acc">${r.inst}개월</span>`:"")+(r.type==="refund"?`<span class="pill acc">환불</span>`:"")+(r.review?`<span class="pill warn">확인 필요</span>`:"")+src+dup;
+    const tags=(r.inst?`<span class="pill acc">${r.instK?`할부 ${r.instK}/${r.inst}`:r.inst+"개월"}</span>`:"")+(r.type==="refund"?`<span class="pill acc">환불</span>`:"")+(r.review?`<span class="pill warn">확인 필요</span>`:"")+src+dup;
     const trTxt=r.type==="tr"?((acctById(r.trIn?r.to:r.base)||{}).name||"?")+" → "+((acctById(r.trIn?r.base:r.to)||{}).name||"?"):"";
     const bn=r.type==="tr"?billNote(r):"";
     const sub=[fmtDate(r.date),r.time||"",trTxt?esc(trTxt):"",bn?(r.autoBill?"카드대금 · ":"")+esc(bn):"",r.flow&&r.type!=="tr"&&r.type!=="in"?flowShort(r.flow):"",r.dup?`${esc(r.dup.t.merchant||"이체")} ${won(r.dup.t.amt)}원과 같은 날·같은 금액`:""].filter(Boolean).join(" · ");
@@ -1013,7 +1017,7 @@ function saveQuick(){
     const t={id:uid(),type:r.type,amt:r.amt,date:r.date,time:r.time||undefined,merchant:r.merchant,cat:r.cat,flow:r.flow||"",nb:(r.type==="out"||r.type==="refund")&&r.nb?true:undefined,acct:(acc||accts[0]||{}).id,memo:"",by:S.me||"",at:Date.now()+i,src:r.src||"quick",raw:r.raw&&r.src!=="quick"?r.raw:undefined,hash:r.hash||undefined,review:!!r.review,reviewNote:r.review?r.reviewNote:undefined,confirmed:false};
     if(r.type==="refund")t.cancelOf="";
     if(r.type==="in")delete t.flow;
-    if(r.type==="out"&&r.inst>1&&acc&&acc.kind==="card")t.inst={n:r.inst,first:firstPayFor(r.date,acc)};
+    if(r.type==="out"&&r.inst>1&&acc&&acc.kind==="card")t.inst={n:r.inst,first:r.instFirst||firstPayFor(r.date,acc)};
     if(r.catTouched)learnMerchant(r.merchant,r.cat);
     if(quickOv[r.key]&&quickOv[r.key].nb!==undefined)learnNb(r.merchant,!!r.nb);
     putTx(t,true);
