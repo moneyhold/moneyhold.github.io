@@ -10,15 +10,16 @@
 | manifest.webmanifest | 홈 화면에 추가할 때 쓰는 앱 이름과 아이콘 정보 |
 | sw.js | 인터넷이 없어도 열리게 하는 파일 |
 | icon-192.png, icon-512.png, icon-maskable-512.png, apple-touch-icon.png | 앱 아이콘 |
+| xlsx.full.min.js | 이용내역 엑셀 파일 읽기 도구(SheetJS). 파일을 불러올 때만 받아요 |
 
-7개 파일을 모두 함께 올려야 해요. 이 폴더는 PAMO 소스(`source`)와 분리되어 있어요.
+8개 파일을 모두 함께 올려야 해요. 이 폴더는 PAMO 소스(`source`)와 분리되어 있어요.
 
 ## 처음 올리기 (GitHub Pages, 무료, 약 5분)
 
 1. github.com에 로그인하고 오른쪽 위 **+** → **New repository**를 누릅니다.
 2. Repository name에 `moajangbu`를 적고 **Public**을 고른 뒤 **Create repository**를 누릅니다.
    - 무료 계정은 Public 저장소만 Pages를 쓸 수 있어요. 올라가는 건 앱 코드뿐이라 장부 데이터는 공개되지 않아요.
-3. 새 저장소 화면에서 **uploading an existing file**을 누르고, 이 폴더의 파일 7개(README.md는 선택)를 끌어다 놓은 뒤 **Commit changes**를 누릅니다.
+3. 새 저장소 화면에서 **uploading an existing file**을 누르고, 이 폴더의 파일 8개(README.md는 선택)를 끌어다 놓은 뒤 **Commit changes**를 누릅니다.
 4. 저장소의 **Settings** → 왼쪽 **Pages** → Source를 **Deploy from a branch**, Branch를 **main** / **(root)**로 고르고 **Save**를 누릅니다.
 5. 1~2분 뒤 같은 화면 위쪽에 주소가 나와요. 형식은 `https://moneyhold.github.io/`예요.
 6. 그 주소를 지인들에게 보내면 끝이에요.
