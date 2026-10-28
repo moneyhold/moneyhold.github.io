@@ -703,8 +703,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="2.2";
+const APP_VERSION="2.3";
 const CHANGELOG=[
+ {v:"2.3",d:"2026-10-29",items:["거래를 수정해서 저장하면 선결제 표시가 풀리던 문제를 고쳤어요."]},
  {v:"2.2",d:"2026-10-27",items:["할부 회차 금액을 카드사와 같게 계산해요. 매달 100원 단위로 나가고, 남는 돈은 첫 회차에 붙어요."]},
  {v:"2.1",d:"2026-10-27",items:["카드사 '할부 현황' 파일도 불러올 수 있어요. 이용내역 파일에 안 나오는 예전 할부를 지금 회차에 맞춰 넣어요."]},
  {v:"2.0",d:"2026-10-27",items:["카드사·은행에서 받은 이용내역 파일(엑셀·CSV)을 불러와 한 번에 기록할 수 있어요. + → 빠른 입력·문자 → '이용내역 파일 불러오기'.","이미 기록된 거래는 자동으로 빼고, 취소된 결제는 넣지 않아요. 할부는 결제일마다 나눠서 잡혀요.","파일은 휴대폰 안에서만 읽고 어디로도 보내지 않아요."]},
@@ -999,6 +1000,12 @@ function saveOne(){
   if(d.type==="out"||d.type==="refund"){t.flow=d.flow||"";if(d.nb)t.nb=true}
   if(d.type==="refund")t.cancelOf=d.cancelOf||"";
   if(d.type==="out"&&acct&&acct.kind==="card"&&d.instN>1)t.inst={n:d.instN,first:d.instFirst||firstPayFor(d.date,acct)};
+  /* 수정해도 선결제 표시는 그대로 (같은 카드의 지출일 때) */
+  if(prev&&t.type==="out"&&prev.type==="out"&&t.acct===prev.acct){
+    if(!t.inst&&prev.pp&&!(prev.inst&&prev.inst.n>1))t.pp=prev.pp.amt&&prev.pp.amt>=t.amt?{...prev.pp,amt:undefined}:prev.pp;
+    if(t.inst&&prev.ppi&&prev.inst&&prev.inst.n===t.inst.n&&prev.inst.first===t.inst.first)t.ppi=prev.ppi;
+    if(t.pp)t.pp=clean(t.pp);
+  }
   putTx(t);
   if(t.merchant&&d.flowTouched&&t.flow)learnFlow(t.merchant,t.flow);
   if(t.merchant&&d.nbTouched)learnNb(t.merchant,!!d.nb);
