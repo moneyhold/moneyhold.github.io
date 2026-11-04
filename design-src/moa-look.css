@@ -1,0 +1,65 @@
+/* 모아장부's look (Design A): cobalt accent, cool grays, Noto Sans KR. Shared by every 모아장부 stage. */
+.moa {
+  & .ss-stage {
+    --ss-accent: #2f5bea;
+    --ss-accent-2: #5b7cf0;
+    --ss-accent-soft: #eef2ff;
+    --ss-accent-text: #2f5bea;
+    --ss-text-strong: #121417;
+    --ss-text: #3a3f48;
+    --ss-text-faint: #5f6672;
+    --ss-line: #e6e8ec;
+    --ss-canvas: #f5f6f8;
+    --ss-well: #f5f6f8;
+    --ss-font: "Noto Sans KR", "Noto Sans CJK KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --ss-radius-md: 12px;
+    --ss-radius-lg: 14px;
+    --moa-sheet: #ffffff;
+    --moa-sunken: #f5f6f8;
+    --moa-on-accent: #ffffff;
+    --moa-scrim: rgba(18, 20, 23, 0.2);
+    overflow: hidden;
+    border-radius: 0;
+    background: #f5f6f8;
+    font-family: var(--ss-font);
+  }
+
+  .moa-wash {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(70% 45% at 50% 0%, rgba(47, 91, 234, 0.13), transparent 70%),
+      radial-gradient(60% 40% at 50% 100%, rgba(47, 91, 234, 0.06), transparent 70%);
+  }
+}
+
+/* Dark (the app's dark tokens) */
+.moa {
+  & .ss-stage[data-theme="dark"] {
+    --ss-accent: #6e8dff;
+    --ss-accent-2: #8ea6ff;
+    --ss-accent-soft: #1a2246;
+    --ss-accent-text: #8ea6ff;
+    --ss-text-strong: #edeff3;
+    --ss-text: #c9ced8;
+    --ss-text-faint: #9aa1ad;
+    --ss-line: #262b34;
+    --ss-surface: #262b34;
+    --ss-raised: #262b34;
+    --ss-canvas: #1b1f26;
+    --ss-well: #1b1f26;
+    --ss-line: #343a45;
+    --moa-sheet: #1b1f26;
+    --moa-sunken: #262b34;
+    --moa-seg: #0e1014;
+    --moa-on-accent: #0b1020;
+    --moa-scrim: rgba(0, 0, 0, 0.45);
+    background: #1b1f26;
+  }
+
+  & .ss-stage[data-theme="dark"] .moa-wash {
+    background:
+      radial-gradient(70% 45% at 50% 0%, rgba(110, 141, 255, 0.16), transparent 70%),
+      radial-gradient(60% 40% at 50% 100%, rgba(110, 141, 255, 0.07), transparent 70%);
+  }
+}

@@ -140,6 +140,24 @@ button.row:hover{background:var(--surface2)}
 .total .r.big{font-size:18px;font-weight:800;padding-top:10px;border-top:1px solid var(--line)}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 nav.tabs .in-tabs{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+/* 가이드 한눈에 보기: 기능 카드 (그림은 Stageshow로 만든 이미지·영상) */
+.feat{display:grid;gap:10px;margin:0 0 16px}
+.ft{background:var(--surface2);border-radius:var(--r);overflow:hidden}
+.ft-copy{margin:0;padding:16px 16px 14px;font-size:15px;line-height:1.5;color:var(--muted)}
+.ft-copy b{color:var(--fg);font-weight:700}
+.ft-pic{position:relative;display:block}
+.ft-pic img,.ft-pic video{display:block;width:100%;height:auto}
+.ft .th-d{display:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ft .th-l{display:none}:root:not([data-theme="light"]) .ft .th-d{display:block}}
+:root[data-theme="dark"] .ft .th-l{display:none}:root[data-theme="dark"] .ft .th-d{display:block}
+.ft-replay{position:absolute;right:12px;bottom:12px;border:0;border-radius:20px;padding:7px 14px;font:inherit;font-size:13px;font-weight:600;color:var(--fg);background:var(--surface);box-shadow:0 2px 10px rgba(0,0,0,.12);opacity:0;pointer-events:none;transition:opacity .25s}
+.ft-pic[data-ended] .ft-replay{opacity:1;pointer-events:auto}
+.ft-stat{padding:16px}
+.ft-stat .ft-copy{padding:0 0 18px}
+.ft-lead{font-size:13px;color:var(--muted)}
+.ft-num{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1.1;white-space:nowrap;font-variant-numeric:tabular-nums;margin-top:2px}
+.ft-num span{font-size:24px;font-weight:700;margin-left:2px}
+.ft-lab{margin:6px 0 0;font-size:13px;color:var(--muted)}
 .gver{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;margin:4px 2px 12px}
 details.guide{background:var(--surface2);border:0;border-radius:var(--r);margin-bottom:10px;overflow:hidden}
 details.guide>summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -703,8 +721,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="2.3";
+const APP_VERSION="2.4";
 const CHANGELOG=[
+ {v:"2.4",d:"2026-11-04",items:["가이드 맨 위에 '한눈에 보기'를 추가했어요. 문자 붙여넣기 영상과 주요 기능 카드로 쓰는 법을 바로 볼 수 있어요."]},
  {v:"2.3",d:"2026-10-29",items:["거래를 수정해서 저장하면 선결제 표시가 풀리던 문제를 고쳤어요."]},
  {v:"2.2",d:"2026-10-27",items:["할부 회차 금액을 카드사와 같게 계산해요. 매달 100원 단위로 나가고, 남는 돈은 첫 회차에 붙어요."]},
  {v:"2.1",d:"2026-10-27",items:["카드사 '할부 현황' 파일도 불러올 수 있어요. 이용내역 파일에 안 나오는 예전 할부를 지금 회차에 맞춰 넣어요."]},
@@ -829,6 +848,18 @@ function viewAcct(ents){
 }
 
 /* ================= guide ================= */
+function featHtml(){
+  const pic=(n,alt)=>`<div class="ft-pic"><img class="th-l" src="media/${n}.jpg" alt="${alt}" width="716" loading="lazy"><img class="th-d" src="media/${n}-dark.jpg" alt="${alt}" width="716" loading="lazy"></div>`;
+  const vid=(cls,n)=>`<video class="${cls}" poster="media/${n}.jpg" muted playsinline autoplay preload="metadata" aria-label="결제 문자를 붙여넣으면 스타벅스 5,600원 지출로 읽어 저장하는 모습"><source src="media/${n}.mp4" type="video/mp4"><source src="media/${n}.webm" type="video/webm"></video>`;
+  return `<div class="feat">
+  <section class="ft"><p class="ft-copy"><b>문자는 붙여넣기 한 번.</b> 카드·은행 결제 문자를 그대로 붙여넣으면 가맹점·금액·카드를 읽어 바로 기록해요.</p>
+    <div class="ft-pic" data-vid>${vid("th-l","demo-sms")}${vid("th-d","demo-sms-dark")}<button type="button" class="ft-replay" data-replay="1">다시 보기</button></div></section>
+  <section class="ft ft-stat"><p class="ft-copy"><b>카드값까지 계산해요.</b> 통장 잔액에서 곧 나갈 카드값을 뺀 돈을 자산 탭 맨 위에 보여줘요.</p>
+    <div class="ft-lead">실제 여유 돈</div><div class="ft-num">1,699,000<span>원</span></div><p class="ft-lab">통장 잔액 3,000,000원 − 카드 결제 예정 1,301,000원</p></section>
+  <section class="ft"><p class="ft-copy"><b>선결제는 체크 한 번.</b> 미리 낸 항목을 체크하면 결제 예정에서 빠져요. 일부만 냈다면 금액만 고치면 돼요.</p>${pic("prepay","선결제한 항목이 체크되어 결제 예정 금액이 1,190원으로 줄어든 카드 결제 화면")}</section>
+  <section class="ft"><p class="ft-copy"><b>한 달치는 파일로.</b> 카드사 이용내역 엑셀을 불러오면 이미 적은 건 빼고 한 번에 넣어요.</p>${pic("files","신한카드 이용내역 파일에서 43건을 읽고 중복 1건을 뺀 모습")}</section>
+  </div>`;
+}
 function viewGuide(){
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent);
   const sec=(title,body,open,tag)=>`<details class="guide"${open?" open":""}><summary><span>${title}${tag?`<span class="tag">${tag}</span>`:""}</span></summary><div class="gbody">${body}</div></details>`;
@@ -836,7 +867,8 @@ function viewGuide(){
   const iphone=`<h4>아이폰</h4><ol><li><b>Safari</b>로 모아장부 주소를 열어요. 카카오톡 안에서 열렸다면 오른쪽 아래 메뉴에서 "Safari로 열기"를 눌러요.</li><li>주소창 옆 <b>공유 버튼</b>(네모에 위쪽 화살표)을 눌러요. 안 보이면 ··· 메뉴 안에 있어요.</li><li><b>홈 화면에 추가</b>를 누르고, <b>웹 앱으로 열기</b>가 켜져 있는지 확인한 뒤 <b>추가</b>를 눌러요.</li></ol>`;
   const galaxy=`<h4>갤럭시</h4><ol><li><b>삼성 인터넷</b>이나 <b>Chrome</b>으로 모아장부 주소를 열어요.</li><li>삼성 인터넷: 아래 메뉴(≡) → <b>현재 페이지 추가</b> → <b>홈 화면</b></li><li>Chrome: 오른쪽 위 ⋮ → <b>홈 화면에 추가</b> 또는 <b>앱 설치</b></li></ol>`;
   return `<div class="gver"><b>모아장부 버전 ${APP_VERSION}</b><span class="muted">${isStandalone()?"홈 화면 앱으로 실행 중":"브라우저에서 실행 중"}</span></div>
-  ${sec("업데이트 소식",news,true,"v"+APP_VERSION)}
+  ${featHtml()}
+  ${sec("업데이트 소식",news,false,"v"+APP_VERSION)}
   ${sec("홈 화면에 추가하기",(ios?iphone+galaxy:galaxy+iphone)+`<p class="muted" style="margin-top:10px">브라우저에서 연 장부와 홈 화면 아이콘으로 연 장부는 서로 따로예요. 처음부터 홈 화면 아이콘으로만 기록하세요.</p>`,!isStandalone())}
   ${sec("처음 설정",`<ol><li><b>자산</b> 탭에서 '주거래 통장, 신용카드, 현금'을 눌러 실제 이름으로 바꿔요. 카드는 <b>결제일</b>, 통장은 <b>시작 잔액</b>을 넣어요. <b>+ 추가</b>로 계좌·카드를 더 만들 수 있어요.</li><li><b>자산</b> 탭 아래 설정에서 <b>한 달 예산</b>을 넣어요. 예산은 '예산에 포함'된 지출만 계산해요. 관리비·통신비처럼 예산 밖에 둘 지출은 기록을 눌러 <b>예산에 포함</b>을 끄면 되고, 빠른 입력 미리보기의 <b>예산 포함</b> 버튼으로도 바꿀 수 있어요.</li><li>아래 <b>+</b> 버튼으로 첫 거래를 기록하면 예시 화면이 사라지고 내 장부가 시작돼요.</li></ol>`)}
   ${sec("빠른 입력 요령",`<p>+ 버튼 → <b>빠른 입력·문자</b>에서 한 줄에 한 건씩 적고, 미리보기를 확인한 뒤 저장해요.</p>
@@ -1169,6 +1201,7 @@ document.addEventListener("click",e=>{
   else if(ds.odel){if(ds.armed){const id=draft.id;[...S.tx.values()].filter(r=>r.type==="refund"&&r.cancelOf===id).forEach(r=>putTx({...r,cancelOf:""},true));delTx(id);draft=null;closeSheet();toast("삭제했어요.")}else{ds.armed="1";t.textContent="한 번 더 누르면 삭제돼요"}}
   else if(ds.qnb!==undefined){const r=quickRows[+ds.qnb];if(r){quickOv[r.key]={...(quickOv[r.key]||{}),nb:!r.nb};refreshQuick()}}
   else if(ds.qsave)saveQuick();
+  else if(ds.replay){const box=t.closest("[data-vid]");if(box){box.removeAttribute("data-ended");box.querySelectorAll("video").forEach(v=>{v.currentTime=0;if(v.offsetParent)v.play().catch(()=>{})})}}
   else if(ds.xl){const f=$("#xlf");if(f)f.click()}
   else if(ds.xlrm){quickFiles=quickFiles.filter(f=>f.id!==ds.xlrm);refreshQuick()}
   else if(ds.aiRead)aiReadUnknown();
@@ -1195,6 +1228,7 @@ document.addEventListener("input",e=>{
   else if(t.id==="f-mer"){draft.merchant=t.value;if(!draft.catTouched){const c=guessCat(t.value,draft.type==="in"?"in":"out");draft.cat=c;const sel=$("#f-cat");if(sel)sel.innerHTML=catOptions(draft.type==="in"?"in":"out",c)}if(!draft.flowTouched){const f=guessFlow(t.value);if(f){draft.flow=f;const sel=$("#f-flow");if(sel)sel.value=f}}if(!draft.nbTouched){draft.nb=!!S.nbLearn[normKey(t.value)];const cb=document.getElementById("f-inb");if(cb)cb.checked=!draft.nb}}
   else if(t.id==="a-init"||t.id==="budget"){const raw=t.value.replace(/[^\d]/g,"");t.value=raw?won(+raw):"";if(t.id==="budget"){clearTimeout(budgetTimer);budgetTimer=setTimeout(saveBudget,700)}}
 });
+document.addEventListener("ended",e=>{const v=e.target;if(v&&v.tagName==="VIDEO"&&v.offsetParent){const box=v.closest("[data-vid]");if(box)box.setAttribute("data-ended","")}},true);
 document.addEventListener("change",e=>{
   const t=e.target;
   if(t.id==="f-cat"){draft.cat=t.value;draft.catTouched=true}
