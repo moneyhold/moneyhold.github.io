@@ -120,6 +120,30 @@ button.row:hover{background:var(--surface2)}
 .chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .flowchips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 12px 62px}
 .flowchips .chip{padding:4px 10px;font-size:12px}
+/* 원형(도넛) 차트: 지출 성격·카테고리. 색은 검증한 5색 + 회색(기타·미분류) */
+:root{--c1:#2a78d6;--c2:#eb6834;--c3:#1baf7a;--c4:#eda100;--c5:#e87ba4;--c0:#b4b9c2}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--c1:#3987e5;--c2:#d95926;--c3:#199e70;--c4:#c98500;--c5:#d55181;--c0:#5a606b}}
+:root[data-theme="dark"]{--c1:#3987e5;--c2:#d95926;--c3:#199e70;--c4:#c98500;--c5:#d55181;--c0:#5a606b}
+.donut{display:grid;grid-template-columns:132px 1fr;gap:14px;align-items:center;padding:14px 4px}
+.donut-fig{position:relative;width:132px;height:132px}
+.donut-fig svg{display:block;width:132px;height:132px;transform:rotate(-90deg)}
+.donut-fig circle{fill:none;stroke-width:18;transition:opacity .2s ease}
+.donut[data-active] .donut-fig circle:not([data-on]){opacity:.28}
+.donut-mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none;padding:0 26px}
+.donut-mid .l{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.donut-mid .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.donut-leg{display:grid;gap:2px;min-width:0}
+.donut-leg button{display:grid;grid-template-columns:10px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:8px;row-gap:1px;align-items:center;border:0;background:none;font:inherit;color:inherit;text-align:left;padding:6px 6px;border-radius:8px;cursor:pointer;transition:opacity .2s ease,background-color .2s ease}
+.donut[data-active] .donut-leg button:not([data-on]){opacity:.45}
+.donut-leg button[data-on]{background:var(--surface2)}
+.donut-leg .sw{width:10px;height:10px;border-radius:3px}
+.donut-leg .n{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.donut-leg .p{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.donut-leg .a{grid-column:2/4;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.donut-all{border-top:1px solid var(--line)}
+.donut-all>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:14px;color:var(--accent);font-weight:600}
+.donut-all>summary::-webkit-details-marker{display:none}
+.donut-all .bars{padding-top:2px}
 .bars{display:flex;flex-direction:column;gap:12px;padding:14px}
 .bar .top{display:flex;justify-content:space-between;gap:8px;font-size:14px}
 .bar .track{height:8px;background:var(--surface2);border-radius:8px;margin-top:5px;overflow:hidden}
@@ -721,8 +745,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="2.4";
+const APP_VERSION="2.5";
 const CHANGELOG=[
+ {v:"2.5",d:"2026-11-12",items:["통계 탭의 지출 성격과 카테고리별 지출을 원형 차트로 보여줘요. 조각이나 항목을 누르면 가운데에 그 금액이 나와요.","카테고리는 많이 쓴 5개와 나머지(기타)로 묶고, '카테고리 전체 보기'를 누르면 전부 볼 수 있어요."]},
  {v:"2.4",d:"2026-11-04",items:["가이드 맨 위에 '한눈에 보기'를 추가했어요. 문자 붙여넣기 영상과 주요 기능 카드로 쓰는 법을 바로 볼 수 있어요."]},
  {v:"2.3",d:"2026-10-29",items:["거래를 수정해서 저장하면 선결제 표시가 풀리던 문제를 고쳤어요."]},
  {v:"2.2",d:"2026-10-27",items:["할부 회차 금액을 카드사와 같게 계산해요. 매달 100원 단위로 나가고, 남는 돈은 첫 회차에 붙어요."]},
@@ -795,6 +820,23 @@ function viewList(ents){
   <div class="chips"><button class="chip ${!S.catFilter?"on":""}" data-cf="">전체</button>${cats.map(c=>`<button class="chip ${S.catFilter===c?"on":""}" data-cf="${esc(c)}">${esc(c)}</button>`).join("")}</div>
   ${Object.keys(groups).length?Object.entries(groups).map(([d,es])=>`<h2 class="sec"><span>${fmtDate(d)}</span></h2><div class="list">${es.map(rowHtml).join("")}</div>`).join(""):`<div class="list"><div class="empty">조건에 맞는 내역이 없어요.</div></div>`}`;
 }
+/* 원형 차트: items=[[이름,금액,색]] 금액 0보다 큰 것만. 조각을 누르거나 가리키면 가운데에 그 항목이 나와요 */
+function donutHtml(items,centerLabel){
+  items=items.filter(i=>i[1]>0);const sum=items.reduce((a,i)=>a+i[1],0);if(!sum)return "";
+  const R=48,C=2*Math.PI*R,gap=items.length>1?1.6:0;let at=0;
+  const segs=items.map(([n,v,c],i)=>{const len=v/sum*C;const d=Math.max(0.6,len-gap);const s=`<circle data-seg="${i}" cx="60" cy="60" r="${R}" stroke="${c}" stroke-dasharray="${d.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-at).toFixed(2)}"><title>${esc(n)} ${won(v)}원 (${Math.round(v/sum*100)}%)</title></circle>`;at+=len;return s}).join("");
+  const pct=v=>{const p=v/sum*100;return p<1&&p>0?"1% 미만":Math.round(p)+"%"};
+  const leg=items.map(([n,v,c],i)=>`<button type="button" data-seg="${i}" data-l="${esc(n)}" data-v="${won(v)}원"><span class="sw" style="background:${c}"></span><span class="n">${esc(n)}</span><span class="p">${pct(v)}</span><span class="a">${won(v)}원</span></button>`).join("");
+  return `<div class="donut" data-total-l="${esc(centerLabel)}" data-total-v="${won(sum)}원"><div class="donut-fig"><svg viewBox="0 0 120 120" role="img" aria-label="${esc(centerLabel)} ${won(sum)}원: ${items.map(([n,v])=>`${esc(n)} ${pct(v)}`).join(", ")}">${segs}</svg><div class="donut-mid"><span class="l">${esc(centerLabel)}</span><span class="v">${won(sum)}원</span></div></div><div class="donut-leg">${leg}</div></div>`;
+}
+function donutFocus(seg){
+  const box=seg&&seg.closest(".donut");if(!box)return;const i=seg.dataset.seg;
+  const same=box.dataset.active===i;
+  box.querySelectorAll("[data-seg]").forEach(x=>{if(!same&&x.dataset.seg===i)x.setAttribute("data-on","");else x.removeAttribute("data-on")});
+  const mid=box.querySelector(".donut-mid");
+  if(same){box.removeAttribute("data-active");mid.children[0].textContent=box.dataset.totalL;mid.children[1].textContent=box.dataset.totalV;return}
+  box.dataset.active=i;const b=box.querySelector(`.donut-leg [data-seg="${i}"]`);mid.children[0].textContent=b.dataset.l;mid.children[1].textContent=b.dataset.v;
+}
 function barsHtml(items,total,uncAmt){
   const max=Math.max(1,...items.map(i=>Math.abs(i[1])),uncAmt||0);
   return `<div class="bars">${items.map(([c,v])=>`<div class="bar"><div class="top"><span>${esc(c)} <span class="muted" style="font-size:12px">${total?Math.round(v/total*100):0}%</span></span><span class="num">${won(v)}</span></div><div class="track"><i style="width:${Math.max(0,v)/max*100}%"></i></div></div>`).join("")}${uncAmt?`<div class="bar unc"><div class="top"><span>미분류</span><span class="num">${won(uncAmt)}</span></div><div class="track"><i style="width:${Math.max(0,uncAmt)/max*100}%"></i></div></div>`:""}</div>`;
@@ -808,10 +850,10 @@ function viewStat(ents){
   const flows=FLOWS.map(([k,,l])=>[l,st.byFlow[k]]).filter(f=>f[1]);
   const [lbl,cls]=STATUS[st.status];
   return summaryHtml(st)+`<h2 class="sec"><span>지출 성격</span><span class="pill ${cls}">${lbl}</span></h2>
-  <div class="list">${flows.length||st.uncNet?barsHtml(flows,st.exp,st.uncNet):`<div class="empty">이번 달 지출이 없어요.</div>`}</div>
+  <div class="list">${flows.length||st.uncNet>0?donutHtml([...FLOWS.map(([k],i)=>[k,st.byFlow[k],`var(--c${i+1})`]),["미분류",st.uncNet,"var(--c0)"]],"이번 달 지출")||barsHtml(flows,st.exp,st.uncNet):`<div class="empty">이번 달 지출이 없어요.</div>`}</div>
   <div class="actions">${st.unc||st.review?`<button class="btn ghost" data-classify="1">미분류·확인 필요 ${st.unc+st.review}건 정리하기</button>`:""}${st.status==="provisional"?`<button class="btn" data-confirm-month="1">${+S.month.slice(5)}월 장부 확정하기</button>`:""}${S.downloads?`<button class="btn ghost" data-export="1">PAMO 월간 요약 파일 내보내기</button>`:""}</div>
   <h2 class="sec"><span>카테고리별 지출</span></h2>
-  <div class="list">${cats.length?barsHtml(cats,st.exp,0):`<div class="empty">이번 달 지출이 없어요.</div>`}</div>
+  <div class="list">${cats.length?(()=>{const pos=cats.filter(c=>c[1]>0);const top=pos.slice(0,5).map(([c,v],i)=>[c,v,`var(--c${i+1})`]);const rest=pos.slice(5).reduce((a,c)=>a+c[1],0);const d=donutHtml(rest>0?[...top,[`기타 ${pos.length-5}개`,rest,"var(--c0)"]]:top,"카테고리 합계");return (d||"")+(pos.length>5||!d?`<details class="donut-all"${d?"":" open"}><summary>카테고리 전체 보기 (${cats.length}개)</summary>${barsHtml(cats,st.exp,0)}</details>`:"")})():`<div class="empty">이번 달 지출이 없어요.</div>`}</div>
   <h2 class="sec"><span>최근 6개월 지출</span></h2>
   <div class="list"><div class="trend">${months.map((m,i)=>`<div class="col ${m===S.month?"cur":""}"><em>${tv[i]?short(tv[i]):""}</em><i style="height:${tv[i]/tmax*100}%"></i><span>${+m.slice(5)}월</span></div>`).join("")}</div></div>
   <h2 class="sec"><span>많이 쓴 곳</span></h2>
@@ -1185,7 +1227,11 @@ let toastTimer;
 function toast(msg,action,fn){clearTimeout(toastTimer);document.querySelectorAll(".toast").forEach(x=>x.remove());const el=document.createElement("div");el.className="toast";el.setAttribute("role","status");el.innerHTML=`<span>${esc(msg)}</span>${action?`<button>${esc(action)}</button>`:""}`;document.body.appendChild(el);if(action)el.querySelector("button").onclick=()=>{el.remove();fn()};toastTimer=setTimeout(()=>el.remove(),action?7000:2800)}
 
 /* ================= events ================= */
+document.addEventListener("pointerover",e=>{if(e.pointerType!=="mouse")return;const seg=e.target.closest&&e.target.closest(".donut [data-seg]");const box=seg&&seg.closest(".donut");if(box&&box.dataset.active!==seg.dataset.seg)donutFocus(seg)});
+document.addEventListener("pointerout",e=>{if(e.pointerType!=="mouse")return;const box=e.target.closest&&e.target.closest(".donut");if(box&&!box.contains(e.relatedTarget)&&box.dataset.active!=null){const on=box.querySelector(`.donut-leg [data-seg="${box.dataset.active}"]`);if(on)donutFocus(on)}});
+let lastMouse=false;document.addEventListener("pointerdown",e=>{lastMouse=e.pointerType==="mouse"},true);
 document.addEventListener("click",e=>{
+  const seg0=e.target.closest&&e.target.closest(".donut [data-seg]");if(seg0){if(!lastMouse)donutFocus(seg0);return}
   const t=e.target.closest("button,#scrim");if(!t)return;
   if(t.id==="scrim"){if(e.target===t){closeSheet();draft=null}return}
   const ds=t.dataset;
