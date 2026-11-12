@@ -580,7 +580,7 @@ function splitBlocks(text){
   const blocks=[];let cur=null;
   for(const line of text.split(/\r?\n/)){
     if(!line.trim()){cur=null;continue}
-    if(SMS_START.test(line)){if(cur&&SMS_TAG.test(cur.text)){cur.text+="\n"+line;cur.shinhanCard=/^\s*신한/.test(line);continue}cur={sms:true,text:line,shinhanCard:/^\s*신한/.test(line)};blocks.push(cur);continue}
+    if(SMS_START.test(line)||(!cur&&looksFinancial(line)&&/(승인|결제|출금|입금|취소|이체)/.test(line))){if(cur&&SMS_TAG.test(cur.text)){cur.text+="\n"+line;cur.shinhanCard=/^\s*신한/.test(line);continue}cur={sms:true,text:line,shinhanCard:/^\s*신한/.test(line)};blocks.push(cur);continue}
     if(cur){
       const closed=(cur.shinhanCard&&/\d\s*원/.test(cur.text))||(/은행/.test(cur.text)&&/\n\s*\([^()]*\)\s*$/.test(cur.text));
       if(!closed){cur.text+="\n"+line;continue}
@@ -712,7 +712,7 @@ function buildQuickRows(){
   for(const b of splitBlocks(quickText)){
     if(b.sms){
       let r=parseShinhanCard(b.text,today)||parseShinhanBank(b.text,today);
-      if(!r||r.kind==="unknown")r=parseGenericSms(b.text,today)||r;
+      if(!r||r.kind==="unknown"||r.kind==="bad")r=parseGenericSms(b.text,today)||r;
       if(r&&r.kind!=="unknown"){out.push({...r,key:"s"+b.text});continue}
       if(quickAI[b.text]){quickAI[b.text].forEach((x,j)=>out.push({...x,key:"a"+j+b.text}));continue}
       if(looksFinancial(b.text)){out.push({kind:"unknown",raw:b.text,masked:maskForAI(b.text),key:"u"+b.text});continue}
@@ -745,8 +745,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="2.5";
+const APP_VERSION="2.6";
 const CHANGELOG=[
+ {v:"2.6",d:"2026-11-12",items:["단축어로 모아둔 카드·은행 알림을 한 번에 가져올 수 있어요(시험 중). 빠른 입력의 '클립보드 내용 붙여넣기' 버튼이나 단축어가 여는 주소로 들어와요.","[Web발신]이 없는 앱 알림 문구도 결제 내역으로 읽어요."]},
  {v:"2.5",d:"2026-11-12",items:["통계 탭의 지출 성격과 카테고리별 지출을 원형 차트로 보여줘요. 조각이나 항목을 누르면 가운데에 그 금액이 나와요.","카테고리는 많이 쓴 5개와 나머지(기타)로 묶고, '카테고리 전체 보기'를 누르면 전부 볼 수 있어요."]},
  {v:"2.4",d:"2026-11-04",items:["가이드 맨 위에 '한눈에 보기'를 추가했어요. 문자 붙여넣기 영상과 주요 기능 카드로 쓰는 법을 바로 볼 수 있어요."]},
  {v:"2.3",d:"2026-10-29",items:["거래를 수정해서 저장하면 선결제 표시가 풀리던 문제를 고쳤어요."]},
@@ -765,7 +766,25 @@ const CHANGELOG=[
  {v:"1.1",d:"2026-10-22",items:["아래 탭에 '가이드'를 추가했어요. 설치 방법, 기록 요령, 업데이트 소식을 여기서 볼 수 있어요."]},
  {v:"1.0",d:"2026-10-22",items:["모아장부 첫 공개","빠른 입력, 신한카드·신한은행 문자 자동 읽기","할부·환불·이체 기록, 지출 성격과 월 장부 확정","백업 파일 저장·불러오기, 인터넷 없이 열기"]}
 ];
+/* 단축어에서 넘어온 알림: 주소 끝의 #add=… 또는 ?add=… 를 빠른 입력 미리보기에 넣어요 */
+let incomingDone=false;
+function takeIncoming(){
+  let raw="";
+  try{const h=location.hash.match(/[#&]add=([^&]*)/),q=new URLSearchParams(location.search).get("add");raw=h?decodeURIComponent(h[1].replace(/\+/g," ")):(q||"")}catch(e){raw=""}
+  if(!raw.trim())return;
+  try{history.replaceState(null,"",location.pathname)}catch(e){}
+  addIncoming(raw,"단축어에서 넘어온 알림");
+}
+window.addEventListener("hashchange",()=>{if(S.loaded)takeIncoming()});
+function addIncoming(raw,from){
+  // 앱 이름 꼬리표([신한 슈퍼SOL], [KB Pay] 등)는 떼고 읽어요
+  const text=String(raw).replace(/\r/g,"").split("\n").map(l=>l.replace(/^\s*\[[^\]\n]{0,20}(?:SOL|Pay|PAY|페이|앱|알림|뱅킹)[^\]\n]{0,10}\]\s*/,"")).join("\n").replace(/\n{3,}/g,"\n\n").trim();if(!text)return;
+  quickText=(quickText.trim()?quickText.trim()+"\n\n":"")+text;quickOv={};
+  draft=null;addMode="quick";renderAdd();
+  const n=quickRows.filter(r=>r.kind!=="bad").length;toast(`${from} ${n}건을 미리보기에 넣었어요. 확인하고 저장하세요.`);
+}
 function render(){
+  if(S.loaded&&!incomingDone){incomingDone=true;setTimeout(takeIncoming,60)}
   $("#tabs").innerHTML=TABS.map(([k,l])=>`<button data-tab="${k}" ${S.tab===k?'aria-current="page"':""}>${ICONS[k]}${l}</button>`).join("");
   const ents=entries();
   const body=S.tab==="cal"?viewCal(ents):S.tab==="list"?viewList(ents):S.tab==="stat"?viewStat(ents):S.tab==="guide"?viewGuide():viewAcct(ents);
@@ -952,6 +971,7 @@ function renderAdd(){
 function quickHtml(){
   if(!quickAcct){const a=settings().accounts;quickAcct=(a.find(x=>x.kind==="card")||a[0]||{}).id}
   return `<div class="field"><label for="qt">한 줄에 한 건, 또는 카드·은행 문자를 그대로 붙여넣으세요</label><textarea class="inp" id="qt" autofocus placeholder="스타벅스 5600&#10;어제 배민 23,000&#10;10/18 쿠팡 129만 3개월&#10;+급여 320만&#10;&#10;[Web발신]&#10;신한카드(1234)승인 홍*동 12,000원(일시불)10/21 12:34 스타벅스">${esc(quickText)}</textarea></div>
+  <button type="button" class="btn ghost" data-clip="1" style="margin-bottom:8px">클립보드 내용 붙여넣기</button>
   <p class="note">카드사·은행 결제 문자를 그대로 붙여넣으면 바로 읽어요. 못 읽은 문자는 "가맹점 금액" 한 줄로 적어주세요. 문자 여러 개는 빈 줄로 나누면 가장 정확해요.</p>
   <button type="button" class="btn ghost" data-xl="1" style="margin-bottom:6px">카드·은행 이용내역 파일 불러오기 (엑셀·CSV)</button><input type="file" id="xlf" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" multiple hidden>
   <div id="xlst"></div>
@@ -1247,6 +1267,7 @@ document.addEventListener("click",e=>{
   else if(ds.odel){if(ds.armed){const id=draft.id;[...S.tx.values()].filter(r=>r.type==="refund"&&r.cancelOf===id).forEach(r=>putTx({...r,cancelOf:""},true));delTx(id);draft=null;closeSheet();toast("삭제했어요.")}else{ds.armed="1";t.textContent="한 번 더 누르면 삭제돼요"}}
   else if(ds.qnb!==undefined){const r=quickRows[+ds.qnb];if(r){quickOv[r.key]={...(quickOv[r.key]||{}),nb:!r.nb};refreshQuick()}}
   else if(ds.qsave)saveQuick();
+  else if(ds.clip){if(!navigator.clipboard||!navigator.clipboard.readText){toast("이 브라우저는 클립보드를 읽을 수 없어요. 입력 칸을 길게 눌러 붙여넣으세요.");return}navigator.clipboard.readText().then(t=>{if(!t||!t.trim()){toast("클립보드가 비어 있어요.");return}addIncoming(t,"클립보드의 알림")}).catch(()=>toast("클립보드를 읽지 못했어요. 입력 칸을 길게 눌러 붙여넣으세요."))}
   else if(ds.replay){const box=t.closest("[data-vid]");if(box){box.removeAttribute("data-ended");box.querySelectorAll("video").forEach(v=>{v.currentTime=0;if(v.offsetParent)v.play().catch(()=>{})})}}
   else if(ds.xl){const f=$("#xlf");if(f)f.click()}
   else if(ds.xlrm){quickFiles=quickFiles.filter(f=>f.id!==ds.xlrm);refreshQuick()}
