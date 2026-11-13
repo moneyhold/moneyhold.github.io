@@ -149,6 +149,24 @@ button.row:hover{background:var(--surface2)}
 .bar .track{height:8px;background:var(--surface2);border-radius:8px;margin-top:5px;overflow:hidden}
 .bar .track i{display:block;height:100%;background:var(--accent);border-radius:8px}
 .bar.unc .track i{background:var(--warn)}
+.flow{padding:16px 14px 10px}
+.flow-head{display:grid;gap:2px;min-height:62px}
+.flow-head .l{font-size:13px;color:var(--muted)}
+.flow-head .v{font-size:26px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.2}
+.flow-head .s{font-size:13px;color:var(--muted)}
+.flow-head .s b{font-weight:600;color:var(--fg)}
+.flow svg{display:block;width:100%;height:auto;margin-top:10px;overflow:visible}
+.flow .bar{fill:var(--accent);opacity:.22;transition:opacity .2s ease}
+.flow .bar.cur{opacity:1}
+.flow[data-pick] .bar{opacity:.14}
+.flow[data-pick] .bar[data-on]{opacity:1}
+.flow .hit{fill:transparent;cursor:pointer}
+.flow .base{stroke:var(--line);stroke-width:1}
+.flow .avg{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:.7}
+.flow .avg-t{font-size:10px;fill:var(--muted)}
+.flow .val{font-size:11px;font-weight:600;fill:var(--fg);font-variant-numeric:tabular-nums}
+.flow .mon{font-size:11px;fill:var(--muted)}
+.flow .mon.cur{fill:var(--fg);font-weight:700}
 .trend{display:grid;grid-template-columns:repeat(6,1fr);align-items:end;gap:10px;height:150px;padding:14px 14px 8px}
 .trend .col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
 .trend .col i{display:block;width:70%;max-width:34px;background:var(--surface2);border-radius:6px 6px 2px 2px;min-height:2px}
@@ -745,8 +763,9 @@ const LOGO_SVG='<svg width="20" height="20" viewBox="0 0 100 100" aria-hidden="t
 const TABS=[["cal","달력"],["list","내역"],["stat","통계"],["acct","자산"],["guide","가이드"]];
 ICONS.guide='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5c2.5-1.2 5.2-1.2 8 .5v13c-2.8-1.7-5.5-1.7-8-.5z"/><path d="M20 5.5c-2.5-1.2-5.2-1.2-8 .5v13c2.8-1.7 5.5-1.7 8-.5z"/></svg>';
 /* ===== 업데이트 소식: 새 버전을 올릴 때 맨 위에 추가 ===== */
-const APP_VERSION="2.6";
+const APP_VERSION="2.7";
 const CHANGELOG=[
+ {v:"2.7",d:"2026-11-13",items:["통계 탭의 '최근 6개월 지출 흐름'을 새로 그렸어요. 이번 달 지출과 지난달까지의 평균을 비교해 보여주고, 막대를 누르면 그 달 금액이 위에 나와요."]},
  {v:"2.6",d:"2026-11-12",items:["단축어로 모아둔 카드·은행 알림을 한 번에 가져올 수 있어요(시험 중). 빠른 입력의 '클립보드 내용 붙여넣기' 버튼이나 단축어가 여는 주소로 들어와요.","[Web발신]이 없는 앱 알림 문구도 결제 내역으로 읽어요."]},
  {v:"2.5",d:"2026-11-12",items:["통계 탭의 지출 성격과 카테고리별 지출을 원형 차트로 보여줘요. 조각이나 항목을 누르면 가운데에 그 금액이 나와요.","카테고리는 많이 쓴 5개와 나머지(기타)로 묶고, '카테고리 전체 보기'를 누르면 전부 볼 수 있어요."]},
  {v:"2.4",d:"2026-11-04",items:["가이드 맨 위에 '한눈에 보기'를 추가했어요. 문자 붙여넣기 영상과 주요 기능 카드로 쓰는 법을 바로 볼 수 있어요."]},
@@ -856,6 +875,29 @@ function donutFocus(seg){
   if(same){box.removeAttribute("data-active");mid.children[0].textContent=box.dataset.totalL;mid.children[1].textContent=box.dataset.totalV;return}
   box.dataset.active=i;const b=box.querySelector(`.donut-leg [data-seg="${i}"]`);mid.children[0].textContent=b.dataset.l;mid.children[1].textContent=b.dataset.v;
 }
+/* 최근 6개월 지출 흐름: 막대 하나를 누르면 위 숫자가 그 달로 바뀌어요 */
+function flowHtml(months,vals,curMonth){
+  const n=months.length,ci=months.indexOf(curMonth);
+  const past=vals.filter((v,i)=>i!==ci&&v>0);const avg=past.length?Math.round(past.reduce((a,v)=>a+v,0)/past.length):0;
+  const W=320,H=132,top=22,bot=22,ch=H-top-bot,max=Math.max(1,avg,...vals),bw=28,step=W/n;
+  const y=v=>top+ch-(v/max)*ch;
+  const bar=(x,v)=>{const h=Math.max(v>0?3:0,(v/max)*ch),r=Math.min(4,h/2),yy=top+ch-h;return `M${x},${top+ch}V${yy+r}Q${x},${yy} ${x+r},${yy}H${x+bw-r}Q${x+bw},${yy} ${x+bw},${yy+r}V${top+ch}Z`};
+  const hi=vals.indexOf(Math.max(...vals));
+  const bars=months.map((m,i)=>{const x=step*i+(step-bw)/2,v=vals[i];const lab=(i===ci||i===hi)&&v>0?`<text class="val" x="${x+bw/2}" y="${y(v)-6}" text-anchor="middle">${short(v)}</text>`:"";
+    return `<g data-i="${i}"><path class="bar${i===ci?" cur":""}" d="${bar(x,v)}"/>${lab}<text class="mon${i===ci?" cur":""}" x="${x+bw/2}" y="${H-4}" text-anchor="middle">${+m.slice(5)}월</text><rect class="hit" x="${step*i}" y="0" width="${step}" height="${H}"><title>${+m.slice(5)}월 지출 ${won(v)}원</title></rect></g>`}).join("");
+  const avgLine=avg?`<line class="avg" x1="0" x2="${W}" y1="${y(avg)}" y2="${y(avg)}"/><text class="avg-t" x="${W}" y="${y(avg)-4}" text-anchor="end">평균 ${short(avg)}</text>`:"";
+  const sub=i=>{const v=vals[i];if(!avg)return "";const d=v-avg;const ing=i===ci&&curMonth===ym(todayStr());return `${ing?"아직 진행 중 · ":""}평균보다 <b>${won(Math.abs(d))}원</b> ${d>0?"더 썼어요":d<0?"덜 썼어요":"같아요"}`};
+  const data=months.map((m,i)=>({l:`${+m.slice(5)}월 지출`,v:`${won(vals[i])}원`,s:sub(i)}));
+  return `<div class="flow" data-flow='${esc(JSON.stringify(data))}' data-cur="${ci}"><div class="flow-head"><span class="l">${data[ci].l}</span><span class="v">${data[ci].v}</span><span class="s">${data[ci].s}</span></div>
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="최근 6개월 지출: ${months.map((m,i)=>`${+m.slice(5)}월 ${won(vals[i])}원`).join(", ")}${avg?`, 지난달까지 평균 ${won(avg)}원`:""}"><line class="base" x1="0" x2="${W}" y1="${top+ch}" y2="${top+ch}"/>${avgLine}${bars}</svg></div>`;
+}
+function flowPick(g){
+  const box=g.closest(".flow");if(!box)return;const i=+g.dataset.i;const data=JSON.parse(box.dataset.flow);
+  const same=box.dataset.pick===String(i);const k=same?+box.dataset.cur:i;
+  box.querySelectorAll(".bar").forEach((b,j)=>{if(!same&&j===i)b.setAttribute("data-on","");else b.removeAttribute("data-on")});
+  if(same)box.removeAttribute("data-pick");else box.dataset.pick=i;
+  const h=box.querySelector(".flow-head");h.children[0].textContent=data[k].l;h.children[1].textContent=data[k].v;h.children[2].innerHTML=data[k].s;
+}
 function barsHtml(items,total,uncAmt){
   const max=Math.max(1,...items.map(i=>Math.abs(i[1])),uncAmt||0);
   return `<div class="bars">${items.map(([c,v])=>`<div class="bar"><div class="top"><span>${esc(c)} <span class="muted" style="font-size:12px">${total?Math.round(v/total*100):0}%</span></span><span class="num">${won(v)}</span></div><div class="track"><i style="width:${Math.max(0,v)/max*100}%"></i></div></div>`).join("")}${uncAmt?`<div class="bar unc"><div class="top"><span>미분류</span><span class="num">${won(uncAmt)}</span></div><div class="track"><i style="width:${Math.max(0,uncAmt)/max*100}%"></i></div></div>`:""}</div>`;
@@ -873,8 +915,8 @@ function viewStat(ents){
   <div class="actions">${st.unc||st.review?`<button class="btn ghost" data-classify="1">미분류·확인 필요 ${st.unc+st.review}건 정리하기</button>`:""}${st.status==="provisional"?`<button class="btn" data-confirm-month="1">${+S.month.slice(5)}월 장부 확정하기</button>`:""}${S.downloads?`<button class="btn ghost" data-export="1">PAMO 월간 요약 파일 내보내기</button>`:""}</div>
   <h2 class="sec"><span>카테고리별 지출</span></h2>
   <div class="list">${cats.length?(()=>{const pos=cats.filter(c=>c[1]>0);const top=pos.slice(0,5).map(([c,v],i)=>[c,v,`var(--c${i+1})`]);const rest=pos.slice(5).reduce((a,c)=>a+c[1],0);const d=donutHtml(rest>0?[...top,[`기타 ${pos.length-5}개`,rest,"var(--c0)"]]:top,"카테고리 합계");return (d||"")+(pos.length>5||!d?`<details class="donut-all"${d?"":" open"}><summary>카테고리 전체 보기 (${cats.length}개)</summary>${barsHtml(cats,st.exp,0)}</details>`:"")})():`<div class="empty">이번 달 지출이 없어요.</div>`}</div>
-  <h2 class="sec"><span>최근 6개월 지출</span></h2>
-  <div class="list"><div class="trend">${months.map((m,i)=>`<div class="col ${m===S.month?"cur":""}"><em>${tv[i]?short(tv[i]):""}</em><i style="height:${tv[i]/tmax*100}%"></i><span>${+m.slice(5)}월</span></div>`).join("")}</div></div>
+  <h2 class="sec"><span>최근 6개월 지출 흐름</span></h2>
+  <div class="list">${flowHtml(months,tv,S.month)}</div>
   <h2 class="sec"><span>많이 쓴 곳</span></h2>
   <div class="list">${top.length?top.map(([n,v],i)=>`<div class="row"><span class="cat">${i+1}</span><span class="main"><span class="t">${esc(n)}</span></span><span class="amt num">${won(v)}</span></div>`).join(""):`<div class="empty">아직 없어요.</div>`}</div>`;
 }
@@ -1252,6 +1294,7 @@ document.addEventListener("pointerout",e=>{if(e.pointerType!=="mouse")return;con
 let lastMouse=false;document.addEventListener("pointerdown",e=>{lastMouse=e.pointerType==="mouse"},true);
 document.addEventListener("click",e=>{
   const seg0=e.target.closest&&e.target.closest(".donut [data-seg]");if(seg0){if(!lastMouse)donutFocus(seg0);return}
+  const fg=e.target.closest&&e.target.closest(".flow [data-i]");if(fg){flowPick(fg);return}
   const t=e.target.closest("button,#scrim");if(!t)return;
   if(t.id==="scrim"){if(e.target===t){closeSheet();draft=null}return}
   const ds=t.dataset;
